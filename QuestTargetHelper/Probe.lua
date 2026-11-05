@@ -1,14 +1,14 @@
 -- Phase 0 capability probe. Records what this client lets addons see so the
--- real design can be fitted to it. Output: WillItDieDB.probe (after /reload).
+-- real design can be fitted to it. Output: QuestTargetHelperDB.probe (after /reload).
 local _, ns = ...
 local D, Try, IsSecret = ns.Describe, ns.Try, ns.IsSecret
 
 local LOG_CAP = 25
 
 local function db()
-  WillItDieDB = WillItDieDB or {}
-  WillItDieDB.probe = WillItDieDB.probe or { snapshots = {}, events = {} }
-  return WillItDieDB.probe
+  QuestTargetHelperDB = QuestTargetHelperDB or {}
+  QuestTargetHelperDB.probe = QuestTargetHelperDB.probe or { snapshots = {}, events = {} }
+  return QuestTargetHelperDB.probe
 end
 
 local function log(kind, entry)
@@ -180,7 +180,7 @@ function ns.ProbeSnapshot(label)
   snap.widgets = probeWidgets()
   snap.spellbook = probeSpellbook()
   table.insert(db().snapshots, snap)
-  print("|cff55ff55WillItDie|r probe '" .. snap.label .. "' saved (" .. #db().snapshots .. " total). /reload or log out to write the file.")
+  print("|cff55ff55QuestTargetHelper|r probe '" .. snap.label .. "' saved (" .. #db().snapshots .. " total). /reload or log out to write the file.")
 end
 
 -- Event recorders: these run all session so casts and plate timing get captured.

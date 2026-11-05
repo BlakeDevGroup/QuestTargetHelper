@@ -31,9 +31,9 @@ function ns.SafeCall(site, fn, ...)
   local ok, err = pcall(fn, ...)
   if not ok and not reported[site] then
     reported[site] = true
-    WillItDieDB = WillItDieDB or {}
-    WillItDieDB.errors = WillItDieDB.errors or {}
-    table.insert(WillItDieDB.errors, site .. ": " .. ns.Describe(err))
-    print("|cffff5555WillItDie|r error in " .. site .. " (logged; /wid errors)")
+    QuestTargetHelperDB = QuestTargetHelperDB or {}
+    QuestTargetHelperDB.errors = QuestTargetHelperDB.errors or {}
+    table.insert(QuestTargetHelperDB.errors, site .. ": " .. ns.Describe(err))
+    print("|cffff5555QuestTargetHelper|r error in " .. site .. " (logged; /qth errors)")
   end
 end
