@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: WillItDie
+## Notes: Shows whether your DoTs will kill a target, on nameplates and unit frames.
+## Author: cdblake
+## Version: 0.1.0
+## SavedVariables: WillItDieDB
+
+Safe.lua
+Probe.lua
+Core.lua
