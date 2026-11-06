@@ -42,7 +42,10 @@ local function announce(text)
   end
 end
 
-local known -- nil until the first scan, so logging in doesn't alert
+local known      -- nil until the first scan, so logging in doesn't alert
+local announced = {} -- questID -> true: each quest is announced once per session
+local AREA_COOLDOWN = 60
+local lastArea = -AREA_COOLDOWN
 
 function A.OnQuestLog()
   if not ns.settings.alerts then known = completed() return end
@@ -50,7 +53,10 @@ function A.OnQuestLog()
   if known then
     local any = false
     for id, title in pairs(now) do
-      if not known[id] then
+      -- The log can flicker while it updates (complete -> not -> complete);
+      -- announcing once per quest keeps that from repeating the warning.
+      if not known[id] and not announced[id] then
+        announced[id] = true
         announce("Quest complete: " .. title)
         any = true
       end
@@ -71,5 +77,8 @@ function A.CheckAreaDone()
       if Quest.OpenObjectives(e) > 0 then return end
     end
   end
-  if sawAny then announce("Nothing left to kill here, go turn in") end
+  if sawAny and t - lastArea > AREA_COOLDOWN then
+    lastArea = t
+    announce("Nothing left to kill here, go turn in")
+  end
 end
