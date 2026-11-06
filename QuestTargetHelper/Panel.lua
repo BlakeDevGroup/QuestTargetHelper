@@ -111,8 +111,16 @@ local function buildClickers()
     -- clicked and what we're targeting now. Shown in /qth dump.
     b:HookScript("PostClick", function(self, button, down)
       local name = UnitName("target")
+      local unit = self.macro -- the nameplate token this row is bound to
+      local rowMob = unit and ns.Describe(UnitName(unit)) or "none"
       P.lastClick = { row = i, at = date("%H:%M:%S"), button = tostring(button), down = tostring(down),
-        macro = tostring(self.macro), target = ns.Describe(name) }
+        macro = tostring(self.macro), rowMob = rowMob, target = ns.Describe(name),
+        macrotext = tostring(self:GetAttribute(button == "RightButton" and "macrotext2" or "macrotext1")),
+        type = tostring(self:GetAttribute("type")) }
+      if ns.settings.clickLog then
+        print(string.format("|cff55ff55QTH|r click row %d (%s, %s) %s %s -> target now: %s",
+          i, tostring(unit), rowMob, tostring(button), down and "down" or "up", ns.Describe(name)))
+      end
     end)
     b:Hide()
     clickers[i] = b

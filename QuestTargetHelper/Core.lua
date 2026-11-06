@@ -237,6 +237,9 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
       debugQuest()
     elseif cmd == "dump" then
       dump()
+    elseif cmd == "clicks" then
+      ns.settings.clickLog = not ns.settings.clickLog
+      say("row click log " .. (ns.settings.clickLog and "on" or "off"))
     elseif cmd == "probe" and rest == "rec" then
       ns.settings.probeRec = not ns.settings.probeRec
       say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
