@@ -58,8 +58,12 @@ function S.ForUnit(unit, now, side)
   if C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest then
     s.related = bool(C_QuestLog.UnitIsRelatedToActiveQuest(unit))
   end
+  -- Plates are restricted regions on Forever: measuring one can throw
+  -- ("Can't measure restricted regions"), so never let it break a snapshot.
   local plate = C_NamePlate.GetNamePlateForUnit(unit)
-  s.y = plate and num(plate:GetBottom()) or 0
+  local ok, bottom = false, nil
+  if plate then ok, bottom = pcall(plate.GetBottom, plate) end
+  s.y = ok and num(bottom) or 0
   return s
 end
 

@@ -2,8 +2,8 @@
 -- does (each file gets `...` = addonName, ns), and counts failures.
 local H = {}
 
-function H.addon(files)
-  local ns = {}
+function H.addon(files, ns)
+  ns = ns or {}
   for _, f in ipairs(files) do
     local chunk = assert(loadfile("QuestTargetHelper/" .. f .. ".lua"))
     chunk("QuestTargetHelper", ns)
