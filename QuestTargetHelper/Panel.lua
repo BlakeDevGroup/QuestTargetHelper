@@ -123,19 +123,32 @@ local function shouldShow(mode, any)
   return false
 end
 
--- Quest mobs on nameplates, best rows first: dotted (most damage coming), then the rest.
-local function nearbyQuestMobs(now)
+-- Is this mob fighting us? Our DoTs on it, the threat API (when readable), or
+-- the "100% Threat" tooltip line (plain in combat).
+local function fighting(unit, e, rem)
+  if rem > 0 or (e and e.threat) then return true end
+  local status = UnitThreatSituation and UnitThreatSituation("player", unit)
+  return plain(status)
+end
+
+-- Rows: every mob fighting us, plus quest mobs. Fighting first, then most
+-- DoT damage still coming, then the rest.
+local function nearbyMobs(now)
   local mobs = {}
   for unit in pairs(Frames.plates) do
     if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit)) then
       local guid, e = Quest.ForUnit(unit, now)
-      if guid and #e.quests > 0 then
-        mobs[#mobs + 1] = { unit = unit, rem = Tracker.Remaining(guid, now) }
+      if guid then
+        local rem = Tracker.Remaining(guid, now)
+        local fight = fighting(unit, e, rem)
+        if fight or #e.quests > 0 then
+          mobs[#mobs + 1] = { unit = unit, rem = rem, fight = fight }
+        end
       end
     end
   end
   table.sort(mobs, function(a, b)
-    if (a.rem > 0) ~= (b.rem > 0) then return a.rem > 0 end
+    if a.fight ~= b.fight then return a.fight end
     if a.rem ~= b.rem then return a.rem > b.rem end
     return a.unit < b.unit
   end)
@@ -143,9 +156,9 @@ local function nearbyQuestMobs(now)
 end
 
 -- Out of combat only: point slots and their click buttons at the current mobs.
-local function assignSlots(now, visible)
+local function assignSlots(now, visible, mobs)
   buildClickers()
-  local mobs = nearbyQuestMobs(now)
+  mobs = mobs or nearbyMobs(now)
   wipe(slots)
   for i = 1, math.min(#mobs, MAX_ROWS) do slots[i] = mobs[i].unit end
   if not clickers then return end
@@ -170,7 +183,7 @@ function P.EnterCombat(now)
 end
 
 -- Show one row for the mob behind `unit` right now (the token may have moved on).
-local function drawRow(r, unit, now, s)
+local function drawRow(r, unit, now, s, clickable)
   local guid = Tracker.GuidFor(unit)
   local name = nil
   if Frames.plates[unit] ~= nil then name = UnitName(unit) end
@@ -180,7 +193,12 @@ local function drawRow(r, unit, now, s)
     return
   end
   local grey = isTrue(UnitIsDead(unit)) or (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit)))
-  local label = grey and ("|cff888888" .. name .. "|r") or name
+  local e = Quest.cache[guid]
+  local questMob = e and #e.quests > 0
+  local label = (grey and ("|cff888888" .. name .. "|r"))
+    or (questMob and name)
+    or ("|cffff9040" .. name .. "|r") -- not a quest mob, but fighting us
+  if clickable == false then label = label .. " |cff666666(no click)|r" end
   if ns.Targeting.nextUnit == unit then label = "|cff40ff40>|r " .. label end
   r.name:SetText(label)
   r.bar:SetMinMaxValues(0, UnitHealthMax(unit))
@@ -228,9 +246,10 @@ function P.Refresh(now)
 
   -- Visibility. In combat the click layer can't be hidden, so while it is up
   -- the panel stays up too (otherwise clicks would land on an invisible row).
-  local want = shouldShow(s.panelMode, #shown > 0)
+  local mobs = nearbyMobs(now)
+  local want = shouldShow(s.panelMode, #shown > 0 or #mobs > 0)
   if not combat then
-    assignSlots(now, want)
+    assignSlots(now, want, mobs)
   elseif holder and holder:IsShown() then
     want = true
   end
@@ -243,8 +262,23 @@ function P.Refresh(now)
   local n = #slots
   for i = 1, n do
     local r = row(i)
-    drawRow(r, slots[i], now, s)
+    drawRow(r, slots[i], now, s, true)
     r:Show()
+  end
+  -- In combat, mobs that joined the fight after the slots froze still get a
+  -- row; it can't be clicked until combat ends (the click layer is frozen).
+  if combat then
+    local inSlots = {}
+    for _, u in ipairs(slots) do inSlots[u] = true end
+    for _, m in ipairs(mobs) do
+      if n >= MAX_ROWS + 3 then break end
+      if m.fight and not inSlots[m.unit] then
+        n = n + 1
+        local r = row(n)
+        drawRow(r, m.unit, now, s, false)
+        r:Show()
+      end
+    end
   end
   for i = n + 1, #rows do rows[i]:Hide() end
 

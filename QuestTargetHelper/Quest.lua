@@ -8,6 +8,8 @@ ns.Quest = Q
 
 local LINE_OBJECTIVE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestObjective) or 8
 local LINE_TITLE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestTitle) or 17
+-- "100% Threat": only on mobs you're in combat with (plain in combat on Forever).
+local LINE_THREAT = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.UnitThreat) or 7
 local TTL = 2 -- seconds before a mob's tooltip is read again
 
 -- "0/4 Zhevra Hooves" -> { text = "Zhevra Hooves", have = 0, need = 4, kill = false }
@@ -64,15 +66,20 @@ function Q.ForUnit(unit, now)
   if e and now - e.at < TTL then e.seen = now return guid, e end
   local name = UnitName(unit)
   local tip = C_TooltipInfo and C_TooltipInfo.GetUnit(unit)
-  local quests = {}
+  local quests, threat = {}, false
   if type(tip) == "table" and type(tip.lines) == "table" and plain(name) then
     local lines = {}
     for i, l in ipairs(tip.lines) do
-      if plain(l.type) and plain(l.leftText) then lines[i] = l else lines[i] = {} end
+      if plain(l.type) and plain(l.leftText) then
+        lines[i] = l
+        if l.type == LINE_THREAT then threat = true end
+      else
+        lines[i] = {}
+      end
     end
     quests = Q.ParseTooltip(lines, name)
   end
-  e = { at = now, seen = now, name = plain(name) and name or "?", quests = quests }
+  e = { at = now, seen = now, name = plain(name) and name or "?", quests = quests, threat = threat }
   Q.cache[guid] = e
   return guid, e
 end
