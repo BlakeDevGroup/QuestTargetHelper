@@ -58,6 +58,9 @@ function ns.OnSettingsChanged()
   hadAny = true -- one pass even with no DoTs, to hide zones that were switched off
 end
 
+local dump            -- defined below with the slash commands
+local autoDumps = 3   -- automatic dumps left this session
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(_, event, a1, a2, a3)
@@ -81,6 +84,12 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "PLAYER_REGEN_DISABLED" then
       ns.Targeting.EnterCombat(GetTime()) -- last moment secure buttons may change
       ns.Panel.EnterCombat(GetTime())
+      -- Diagnostics: a dump 3s into the first few fights of a session, so
+      -- nobody has to type mid-fight. Read from SavedVariables after /reload.
+      if autoDumps > 0 then
+        autoDumps = autoDumps - 1
+        C_Timer.After(3, function() ns.SafeCall("autodump", dump, "auto") end)
+      end
     elseif event == "ADDON_LOADED" and a1 == ADDON then
       QuestTargetHelperDB = QuestTargetHelperDB or {}
       QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
@@ -159,10 +168,10 @@ end
 
 -- /qth dump: everything the rules see about every nameplate, saved for reading
 -- outside the game (written on /reload). Includes plates we aren't tracking.
-local function dump()
+function dump(label) -- assigns the local declared above
   local now = GetTime()
   local snaps, ctx = ns.Snapshot.All(now)
-  local d = { at = date("%H:%M:%S"), inCombat = InCombatLockdown(), sideInCombat = ctx.sideInCombat,
+  local d = { label = label or "manual", at = date("%H:%M:%S"), inCombat = InCombatLockdown(), sideInCombat = ctx.sideInCombat,
     logTitles = 0, plates = {}, untracked = {} }
   for _ in pairs(ns.Quest.myTitles or {}) do d.logTitles = d.logTitles + 1 end
   for _, s in ipairs(snaps) do
@@ -198,7 +207,14 @@ local function dump()
   QuestTargetHelperDB.dumps = QuestTargetHelperDB.dumps or {}
   table.insert(QuestTargetHelperDB.dumps, d)
   while #QuestTargetHelperDB.dumps > 10 do table.remove(QuestTargetHelperDB.dumps, 1) end
-  say(string.format("dumped %d nameplates (%d untracked). /reload to save it.", #d.plates, #d.untracked))
+  -- What the panel would list right now, for comparison with the plates.
+  d.rows = {}
+  for _, r in ipairs(ns.Rules.Rows(snaps, ctx, ns.Quest.Progress)) do d.rows[#d.rows + 1] = r.unit end
+  d.panelShown = _G.QuestTargetHelperPanel and _G.QuestTargetHelperPanel:IsShown() or false
+  d.errors = #(QuestTargetHelperDB.errors or {})
+  if label ~= "auto" then
+    say(string.format("dumped %d nameplates (%d untracked). /reload to save it.", #d.plates, #d.untracked))
+  end
 end
 
 SLASH_QUESTTARGETHELPER1 = "/qth"
