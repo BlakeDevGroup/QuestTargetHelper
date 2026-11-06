@@ -172,6 +172,14 @@ eq("non-hostile skipped", R.CastUnit("Guard", { { unit = "target", name = "Guard
 eq("no name: no unit", R.CastUnit(nil, cands), nil)
 
 ---------------------------------------------------------------------------
+-- Current-target highlight
+---------------------------------------------------------------------------
+eq("our target: highlighted", R.IsTarget("Creature-np1", "Creature-np1"), true)
+eq("another mob: not highlighted", R.IsTarget("Creature-np2", "Creature-np1"), false)
+eq("no target: nothing highlighted", R.IsTarget("Creature-np1", nil), false)
+eq("unknown GUID: never highlighted", R.IsTarget(nil, nil), false)
+
+---------------------------------------------------------------------------
 -- Bug: repeated "Quest complete" raid warnings (log flicker)
 ---------------------------------------------------------------------------
 local announced = {}

@@ -135,6 +135,12 @@ function R.Objectives(snaps, progress)
   return out
 end
 
+-- Is this row's mob our current target? By GUID: plain in combat, unlike some
+-- unit comparisons. Unknown GUIDs never match.
+function R.IsTarget(guid, targetGuid)
+  return guid ~= nil and targetGuid ~= nil and guid == targetGuid
+end
+
 -- Which unit a cast went to, from the cast target's name (UNIT_SPELLCAST_SENT).
 -- candidates: ordered { {unit, name, hostile} } - target, softenemy, mouseover,
 -- focus, then nameplates. The first hostile one with that name wins, so the

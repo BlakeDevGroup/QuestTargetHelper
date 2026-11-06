@@ -132,6 +132,16 @@ local function row(i)
   if not r then
     r = CreateFrame("Frame", nil, frame)
     r:SetSize(WIDTH - 2 * PAD, ROW_H)
+    -- Current target: a soft gold background plus a gold bar on the left.
+    r.sel = r:CreateTexture(nil, "BACKGROUND")
+    r.sel:SetPoint("TOPLEFT", -4, 1)
+    r.sel:SetPoint("BOTTOMRIGHT", 4, -1)
+    r.sel:SetColorTexture(1, 0.82, 0, 0.18)
+    r.selBar = r:CreateTexture(nil, "ARTWORK")
+    r.selBar:SetPoint("TOPLEFT", -4, 1)
+    r.selBar:SetPoint("BOTTOMLEFT", -4, -1)
+    r.selBar:SetWidth(2)
+    r.selBar:SetColorTexture(1, 0.82, 0, 1)
     r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     r.name:SetPoint("LEFT")
     r.name:SetWidth(110)
@@ -251,6 +261,9 @@ local function drawRow(r, unit, now, s, clickable, snap)
   if not clickable then label = label .. " |cff666666(no click)|r" end
   if ns.Targeting.nextUnit == unit then label = "|cff40ff40>|r " .. label end
   r.name:SetText(label)
+  local targeted = ns.Rules.IsTarget(guid, Tracker.GuidFor("target"))
+  r.sel:SetShown(targeted)
+  r.selBar:SetShown(targeted)
   r.bar:SetMinMaxValues(0, UnitHealthMax(unit))
   r.bar:SetValue(UnitHealth(unit))
   if grey then r.bar:SetStatusBarColor(0.4, 0.4, 0.4) else r.bar:SetStatusBarColor(0.75, 0.2, 0.2) end
