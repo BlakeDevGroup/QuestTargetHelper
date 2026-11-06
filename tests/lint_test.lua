@@ -58,6 +58,12 @@ eq("no unit attribute on click buttons", offenders('SetAttribute%("unit'), "")
 eq("rows target with a plain /target macro",
   (source("Panel"):find('SetAttribute%("macrotext1", "/target " %.%. unit%)') ~= nil), true)
 
+-- Bug: only the name part of a row took clicks; the kill-zone frames over the
+-- bar were in the way. Display frames ignore the mouse, the click layer is HIGH.
+local _, mouseOff = source("Overlay"):gsub("EnableMouse%(false%)", "")
+eq("overlay frames (zone, skull window, skull bar) ignore the mouse", mouseOff, 3)
+eq("click layer above the panel", (source("Panel"):find('holder:SetFrameStrata%("HIGH"%)') ~= nil), true)
+
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
 

@@ -87,8 +87,9 @@ local function buildClickers()
   if clickers or InCombatLockdown() then return end
   holder = CreateFrame("Frame", "QuestTargetHelperPanelClicks", UIParent)
   holder:SetSize(WIDTH, CLICK_ROWS * ROW_H)
-  holder:SetFrameStrata("MEDIUM")
-  holder:SetFrameLevel(frame:GetFrameLevel() + 20)
+  -- Above everything in the panel (MEDIUM): only the name used to take clicks,
+  -- because the row's kill-zone frames sat over the bar.
+  holder:SetFrameStrata("HIGH")
   clickers = {}
   for i = 1, CLICK_ROWS do
     local b = CreateFrame("Button", "QuestTargetHelperPanelRow" .. i, holder, "SecureActionButtonTemplate")
@@ -165,7 +166,9 @@ local function row(i)
     r.name:SetWidth(110)
     r.name:SetJustifyH("LEFT")
     r.name:SetWordWrap(false)
+    r:EnableMouse(false)
     r.bar = CreateFrame("StatusBar", nil, r)
+    r.bar:EnableMouse(false)
     r.bar:SetPoint("LEFT", r.name, "RIGHT", 4, 0)
     r.bar:SetSize(92, 10)
     r.bar:SetStatusBarTexture(WHITE)

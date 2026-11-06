@@ -30,6 +30,7 @@ end
 local function build(bar)
   local o = CreateFrame("StatusBar", nil, bar)
   o:SetFrameLevel(bar:GetFrameLevel() + 3)
+  o:EnableMouse(false) -- display only: never block clicks on rows or nameplates
   o:SetStatusBarTexture(WHITE)
 
   -- Bright line at the zone's end so the edge is easy to compare with the fill.
@@ -40,9 +41,11 @@ local function build(bar)
   edge:SetPoint("BOTTOM", o:GetStatusBarTexture(), "BOTTOMRIGHT")
 
   local win = CreateFrame("Frame", nil, o)
+  win:EnableMouse(false)
   win:SetClipsChildren(true)
   win:SetPoint("LEFT", bar, "RIGHT", 3, 0)
   local sb = CreateFrame("StatusBar", nil, win)
+  sb:EnableMouse(false) -- 10000px wide (clipped): must never take the mouse
   sb:SetPoint("RIGHT", win, "RIGHT")
   sb:SetStatusBarTexture(WHITE)
   sb:SetStatusBarColor(0, 0, 0, 0)

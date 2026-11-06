@@ -239,7 +239,25 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
       dump()
     elseif cmd == "clicks" then
       ns.settings.clickLog = not ns.settings.clickLog
-      say("row click log " .. (ns.settings.clickLog and "on" or "off"))
+      say("row click log " .. (ns.settings.clickLog and "on" or "off") ..
+        (ns.settings.clickLog and " (also names the frame under your cursor)" or ""))
+      -- Which frame would take a click right now; printed when it changes.
+      if ns.settings.clickLog and not ns.focusTicker then
+        local last
+        ns.focusTicker = C_Timer.NewTicker(0.3, function()
+          if not ns.settings.clickLog then return end
+          local f = (GetMouseFoci and GetMouseFoci()[1]) or (GetMouseFocus and GetMouseFocus())
+          local name = "nothing"
+          if f then
+            local ok, n = pcall(f.GetDebugName, f)
+            name = ok and tostring(n) or "?"
+          end
+          if name ~= last then
+            last = name
+            say("under cursor: " .. name)
+          end
+        end)
+      end
     elseif cmd == "probe" and rest == "rec" then
       ns.settings.probeRec = not ns.settings.probeRec
       say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
