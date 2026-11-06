@@ -165,6 +165,13 @@ local cands = {
 }
 eq("cast at soft target credited there", R.CastUnit("Zhevra Runner", cands), "softenemy")
 eq("tie: hard target wins", R.CastUnit("Kolkar", cands), "target")
+-- Bug: a group member's DoT replaced ours on the mob, but the zone kept ours.
+eq("group cast: party member", R.IsGroupCaster("party2", false), true)
+eq("group cast: raid member", R.IsGroupCaster("raid17", false), true)
+eq("group cast: our own raid token is not a teammate", R.IsGroupCaster("raid3", true), false)
+eq("group cast: a mob's cast is not a teammate", R.IsGroupCaster("nameplate4", false), false)
+eq("group cast: party pets don't count", R.IsGroupCaster("partypet1", false), false)
+eq("group cast: target is not a teammate", R.IsGroupCaster("target", false), false)
 eq("non-hostile skipped", R.CastUnit("Guard", { { unit = "target", name = "Guard", hostile = false } }), nil)
 eq("no name: no unit", R.CastUnit(nil, cands), nil)
 

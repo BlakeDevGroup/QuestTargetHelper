@@ -90,6 +90,24 @@ function T.OnCastSucceeded(castGUID, spellID)
   lastApplied = { guid = guid, name = name, at = now }
 end
 
+-- A group member finished a cast. If it's a DoT we also have on their target,
+-- theirs replaced ours (one per mob on Forever): stop counting ours. If the two
+-- did stack after all, the zone only undercounts, which stays safe.
+function T.OnGroupCast(unit, spellID)
+  if not plain(spellID) then return end
+  local me = UnitIsUnit(unit, "player")
+  if not ns.Rules.IsGroupCaster(unit, plain(me) and me or nil) then return end
+  local name = spellName(spellID)
+  if not plain(name) or not ns.Spells[name] then return end
+  local guid = T.GuidFor(unit .. "target")
+  local mob = guid and T.byGuid[guid]
+  if not (mob and mob[name]) then return end
+  mob[name] = nil
+  local who = UnitName(unit)
+  print("|cff55ff55QTH|r " .. name .. " replaced by " .. (plain(who) and who or "a group member") ..
+    "'s, no longer counted as yours")
+end
+
 -- UNIT_COMBAT on the target: a miss/immune right after our cast means it never landed.
 function T.OnUnitCombat(unit, action)
   if not lastApplied or not plain(action) or not MISS[action] then return end
