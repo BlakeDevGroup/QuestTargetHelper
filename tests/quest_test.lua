@@ -72,6 +72,18 @@ quests = Q.ParseTooltip({
 }, "Zhevra Runner")
 eq("quest with only their progress dropped", #quests, 0)
 
+-- Quest-log progress wins over a stale tooltip count, matched on the text.
+Q.progress = { ["The Zhevra"] = { ["Zhevra Hooves"] = { have = 3, need = 4 } } }
+local stale = Q.ParseObjective("1/4 Zhevra Hooves")
+local have, need = Q.Progress("The Zhevra", stale)
+eq("log have", have, 3); eq("log need", need, 4)
+have = Q.Progress("Other Quest", stale)
+eq("no log entry falls back to tooltip", have, 1)
+Q.progress = { ["The Zhevra"] = { ["Zhevra Hooves"] = { have = 4, need = 4 } } }
+eq("done in the log = not open", Q.OpenObjectives({ quests = {
+  { title = "The Zhevra", objectives = { stale } } } }), 0)
+Q.progress = {}
+
 eq("no quest lines", #Q.ParseTooltip({ { type = 2, leftText = "Wolf" } }, "Wolf"), 0)
 
 if failures == 0 then print("all quest tests passed") else print(failures .. " failure(s)") os.exit(1) end

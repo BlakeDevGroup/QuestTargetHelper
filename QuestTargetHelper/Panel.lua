@@ -193,12 +193,13 @@ local function nearbyObjectives(now)
         for _, q in ipairs(e.quests) do
           for _, o in ipairs(q.objectives) do
             local key = q.title .. "\n" .. o.text
+            local have, need = Quest.Progress(q.title, o) -- quest log first: updates on loot at once
             local obj = objectives[key]
             if not obj then
-              objectives[key] = { title = q.title, text = o.text, have = o.have, need = o.need }
+              objectives[key] = { title = q.title, text = o.text, have = have, need = need }
               order[#order + 1] = key
-            elseif o.have > obj.have then
-              obj.have = o.have
+            elseif have > obj.have then
+              obj.have = have
             end
           end
         end
@@ -236,12 +237,19 @@ local function assignSlots(mobs, visible)
   holder:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -objHeight)
   local mark = ns.settings.markSkull and "\n/tm !8" or ""
   for i, b in ipairs(clickers) do
-    local unit = slots[i]
-    if unit and visible then
-      b:SetAttribute("macrotext", "/target " .. unit .. mark)
-      b:Show()
-    else
-      b:Hide()
+    local unit = visible and slots[i] or nil
+    local macro = unit and ("/target " .. unit .. mark) or nil
+    if macro ~= b.macro then
+      b.macro = macro
+      UnregisterStateDriver(b, "visibility")
+      if macro then
+        b:SetAttribute("macrotext", macro)
+        -- The game itself hides the click spot once its mob is gone or dead,
+        -- in combat too, with no addon code involved.
+        RegisterStateDriver(b, "visibility", "[@" .. unit .. ",exists,nodead] show; hide")
+      else
+        b:Hide()
+      end
     end
   end
   holder:SetShown(visible and #slots > 0)
@@ -261,10 +269,9 @@ local function drawRow(r, unit, now, s, clickable)
   local guid = Tracker.GuidFor(unit)
   local name = nil
   if Frames.plates[unit] ~= nil then name = UnitName(unit) end
-  if not guid or not plain(name) then
-    r.name:SetText("|cff666666-|r")
-    r.bar:Hide()
-    return
+  if not guid or not plain(name) or isTrue(UnitIsDead(unit)) then
+    r:Hide() -- its mob is gone; the slot stays (click spots can't move in combat)
+    return false
   end
   local grey = isTrue(UnitIsDead(unit)) or (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit)))
   local e = Quest.cache[guid]
@@ -280,6 +287,8 @@ local function drawRow(r, unit, now, s, clickable)
   if grey then r.bar:SetStatusBarColor(0.4, 0.4, 0.4) else r.bar:SetStatusBarColor(0.75, 0.2, 0.2) end
   Overlay.Update(r.bar, unit, s.enabled and Tracker.Remaining(guid, now) or 0)
   r.bar:Show()
+  r:Show()
+  return true
 end
 
 function P.Refresh(now)
@@ -323,13 +332,12 @@ function P.Refresh(now)
 
   -- Mob rows under the objectives: clickable slots first, then (in combat) the
   -- mobs that turned up after the layout froze.
-  local n = #slots
+  local n, lastShown = #slots, 0
   for i = 1, n do
     local r = row(i)
     r:ClearAllPoints()
     r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (i - 1) * ROW_H)
-    drawRow(r, slots[i], now, s, true)
-    r:Show()
+    if drawRow(r, slots[i], now, s, true) then lastShown = i end
   end
   if combat then
     local inSlots = {}
@@ -341,12 +349,12 @@ function P.Refresh(now)
         local r = row(n)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (n - 1) * ROW_H)
-        drawRow(r, m.unit, now, s, false)
-        r:Show()
+        if drawRow(r, m.unit, now, s, false) then lastShown = n end
       end
     end
   end
   for i = n + 1, #rows do rows[i]:Hide() end
+  n = lastShown -- trailing empty slots don't take space
 
   local height = objHeight + n * ROW_H + PAD
   if n == 0 and #text == 0 then

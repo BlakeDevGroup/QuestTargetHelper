@@ -66,23 +66,53 @@ end
 -- which case nothing is filtered out.
 Q.myTitles = nil
 
+-- Progress from our quest log: progress[title][objective text] = {have, need}.
+-- The log updates the moment an item drops; unit tooltips lag behind, so
+-- tooltips only say *which* mob counts for what, and the counts come from here.
+Q.progress = {}
+
+local function addProgress(progress, title, text, have, need)
+  local o = Q.ParseObjective(text)
+  if not o then return end
+  if type(have) == "number" and type(need) == "number" then o.have, o.need = have, need end
+  progress[title] = progress[title] or {}
+  progress[title][o.text] = { have = o.have, need = o.need }
+end
+
 function Q.RefreshLog()
-  local titles, any = {}, false
+  local titles, progress, any = {}, {}, false
   if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
       local info = C_QuestLog.GetInfo(i)
       if info and not info.isHeader and type(info.title) == "string" then
         titles[info.title], any = true, true
+        local objs = info.questID and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(info.questID)
+        for _, ob in ipairs(type(objs) == "table" and objs or {}) do
+          addProgress(progress, info.title, ob.text, ob.numFulfilled, ob.numRequired)
+        end
       end
     end
   elseif GetNumQuestLogEntries and GetQuestLogTitle then
     for i = 1, GetNumQuestLogEntries() do
       local title, _, _, isHeader = GetQuestLogTitle(i)
-      if not isHeader and type(title) == "string" then titles[title], any = true, true end
+      if not isHeader and type(title) == "string" then
+        titles[title], any = true, true
+        for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0) do
+          addProgress(progress, title, (GetQuestLogLeaderBoard(j, i)))
+        end
+      end
     end
   end
   -- An empty log reads the same as a failed read; only trust a log with quests.
   Q.myTitles = any and titles or nil
+  Q.progress = progress
+end
+
+-- have, need for an objective seen in a tooltip, preferring the quest log.
+function Q.Progress(title, o)
+  local p = Q.progress[title] and Q.progress[title][o.text]
+  if p then return p.have, p.need end
+  return o.have, o.need
 end
 
 local function isMine(title)
@@ -94,7 +124,8 @@ function Q.OpenObjectives(entry)
   local n = 0
   for _, q in ipairs(entry.quests) do
     for _, o in ipairs(q.objectives) do
-      if o.have < o.need then n = n + 1 end
+      local have, need = Q.Progress(q.title, o)
+      if have < need then n = n + 1 end
     end
   end
   return n
