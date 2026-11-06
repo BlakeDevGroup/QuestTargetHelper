@@ -32,9 +32,36 @@ local objHeight = PAD  -- height of the objectives section; frozen in combat
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 local function isTrue(v) return plain(v) and v == true end
 
+-- Position: the panel's top-left corner, in UIParent's bottom-left coordinates.
+-- The panel and the click layer are each anchored to UIParent from this, never
+-- to each other: a frame a protected frame is anchored to becomes protected,
+-- and the game then blocks Show/Hide/SetHeight on it in combat (that hid the
+-- panel mid-fight and stopped it growing).
+local function position()
+  local p = QuestTargetHelperDB.panelPos
+  if type(p) ~= "table" or type(p.x) ~= "number" or type(p.y) ~= "number" then
+    p = { x = UIParent:GetWidth() / 2 + 235, y = UIParent:GetHeight() / 2 + 100 } -- right of centre
+    QuestTargetHelperDB.panelPos = p
+  end
+  return p
+end
+
+-- Out of combat only.
+local function place()
+  if InCombatLockdown() then return end
+  local p = position()
+  frame:ClearAllPoints()
+  frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", p.x, p.y)
+  if holder then
+    holder:ClearAllPoints()
+    holder:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", p.x, p.y - objHeight)
+  end
+end
+
 local function savePosition()
-  local point, _, relPoint, x, y = frame:GetPoint()
-  QuestTargetHelperDB.panelPos = { point, relPoint, x, y }
+  local left, top = frame:GetLeft(), frame:GetTop() -- our own frame, not a nameplate: measurable
+  if left and top then QuestTargetHelperDB.panelPos = { x = left, y = top } end
+  place()
 end
 
 local function build()
@@ -42,12 +69,6 @@ local function build()
   frame:SetSize(WIDTH, 40)
   frame:SetFrameStrata("MEDIUM")
   frame:SetClampedToScreen(true)
-  local pos = QuestTargetHelperDB.panelPos
-  if pos then
-    frame:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
-  else
-    frame:SetPoint("CENTER", UIParent, "CENTER", 360, 40)
-  end
   local bg = frame:CreateTexture(nil, "BACKGROUND")
   bg:SetAllPoints()
   bg:SetColorTexture(0, 0, 0, 0.55)
@@ -56,6 +77,7 @@ local function build()
   frame:SetScript("OnDragStart", function() if not InCombatLockdown() then frame:StartMoving() end end)
   frame:SetScript("OnDragStop", function() frame:StopMovingOrSizing() savePosition() end)
   lines, rows = {}, {}
+  place()
   frame:Hide()
 end
 
@@ -156,8 +178,7 @@ local function assignSlots(mobs, visible)
   wipe(slots)
   for i = 1, math.min(#mobs, CLICK_ROWS) do slots[i] = mobs[i].unit end
   if not clickers then return end
-  holder:ClearAllPoints()
-  holder:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -objHeight)
+  place() -- the click layer sits under the objectives, anchored to UIParent
   local mark = ns.settings.markSkull and "\n/tm !8" or ""
   for i, b in ipairs(clickers) do
     local unit = visible and slots[i] or nil
