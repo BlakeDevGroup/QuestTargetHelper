@@ -29,5 +29,5 @@ Build 1.60.1.70790, Interface 16001, WOW_PROJECT_ID 18. Warlock level 18, open w
   - Plater's `namePlateIsQuestObjective` = true and `namePlateNpcId` = 3242 are plain.
 - With Plater, Blizzard's `plate.UnitFrame` is hidden and Plater's `plate.unitFrame` is the one shown.
 
-## Open
-- Do description numbers include spell power? Check by swapping a +spell damage item out of combat and re-reading the description.
+## Spell power (2026-11-05)
+- **Description numbers include spell power.** Swapping a +spell damage item out of combat changed the `C_Spell.GetSpellDescription(6222)` value. So the cast-time description is the full estimate; no spell power correction is needed. Crits are not included (conservative).
