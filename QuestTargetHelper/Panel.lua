@@ -108,6 +108,16 @@ local function buildClickers()
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.12)
+    -- Hovering a row outlines its mob's nameplate in gold (display only), so
+    -- with several same-name mobs you can see which one the row means.
+    b:HookScript("OnEnter", function(self)
+      ns.Markers.hoverUnit = self.macro -- the row's nameplate token
+      ns.SafeCall("hover", ns.Markers.Update, GetTime())
+    end)
+    b:HookScript("OnLeave", function(self)
+      if ns.Markers.hoverUnit == self.macro then ns.Markers.hoverUnit = nil end
+      ns.SafeCall("hover", ns.Markers.Update, GetTime())
+    end)
     -- Diagnostics (insecure hook, after the secure click ran): which row was
     -- clicked and what we're targeting now. Shown in /qth dump.
     b:HookScript("PostClick", function(self, button, down)

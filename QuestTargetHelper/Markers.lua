@@ -34,13 +34,21 @@ local function build(bar)
   return m
 end
 
-local function show(bar, isNext, open)
+local function show(bar, isNext, open, hovered)
   local m = bar.__qthMarks or build(bar)
-  for _, t in ipairs(m.edges) do t:SetShown(isNext) end
+  -- Gold while its pull-tracker row is hovered, green for the keybind's next mob.
+  local outline = hovered or isNext
+  for _, t in ipairs(m.edges) do
+    if hovered then t:SetColorTexture(1, 0.82, 0, 1) else t:SetColorTexture(0.25, 1, 0.35, 0.95) end
+    t:SetShown(outline)
+  end
   m.count:SetText(open >= 2 and ("x" .. open) or "")
   m:Show()
   marked[bar] = true
 end
+
+-- Nameplate token of the pull-tracker row under the mouse (Panel sets it).
+M.hoverUnit = nil
 
 function M.Update(now)
   local s = ns.settings
@@ -50,14 +58,15 @@ function M.Update(now)
     local bar = Frames.PlateBar(unit)
     if bar then
       local isNext = unit == nextUnit
+      local isHovered = unit == M.hoverUnit
       local open = 0
       if s.doubleDip then
         local guid = UnitGUID(unit)
         local e = guid and not ns.IsSecret(guid) and Quest.cache[guid] -- never index with a secret
         if e then open = Quest.OpenObjectives(e) end
       end
-      if isNext or open >= 2 then
-        show(bar, isNext, open)
+      if isNext or isHovered or open >= 2 then
+        show(bar, isNext, open, isHovered)
         still[bar] = true
       end
     end
