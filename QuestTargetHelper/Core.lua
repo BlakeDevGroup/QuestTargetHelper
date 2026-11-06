@@ -211,6 +211,7 @@ function dump(label) -- assigns the local declared above
   d.rows = {}
   for _, r in ipairs(ns.Rules.Rows(snaps, ctx, ns.Quest.Progress)) do d.rows[#d.rows + 1] = r.unit end
   d.panelShown = _G.QuestTargetHelperPanel and _G.QuestTargetHelperPanel:IsShown() or false
+  d.clicks = ns.Panel.ClickState()
   d.errors = #(QuestTargetHelperDB.errors or {})
   if label ~= "auto" then
     say(string.format("dumped %d nameplates (%d untracked). /reload to save it.", #d.plates, #d.untracked))

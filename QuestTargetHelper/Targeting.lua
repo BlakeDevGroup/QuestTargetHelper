@@ -70,7 +70,8 @@ function G.Refresh(now)
   if InCombatLockdown() then return end
   local best = G.Candidates(now)[1]
   G.nextUnit = best and best.unit or nil
-  setMacro(best and ("/target " .. best.unit .. markLine()) or "")
+  -- "[@unit]": always a unit token, never read as a mob named "nameplate7".
+  setMacro(best and ("/target [@" .. best.unit .. "]" .. markLine()) or "")
 end
 
 -- Last chance before lockdown: switch to names, so presses keep working while

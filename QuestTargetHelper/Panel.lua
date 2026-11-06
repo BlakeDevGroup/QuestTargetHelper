@@ -102,6 +102,13 @@ local function buildClickers()
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.12)
+    -- Diagnostics (insecure hook, after the secure click ran): which row was
+    -- clicked and what we're targeting now. Shown in /qth dump.
+    b:HookScript("PostClick", function(self, button, down)
+      local name = UnitName("target")
+      P.lastClick = { row = i, at = date("%H:%M:%S"), button = tostring(button), down = tostring(down),
+        macro = tostring(self.macro), target = ns.Describe(name) }
+    end)
     b:Hide()
     clickers[i] = b
   end
@@ -182,7 +189,8 @@ local function assignSlots(mobs, visible)
   local mark = ns.settings.markSkull and "\n/tm !8" or ""
   for i, b in ipairs(clickers) do
     local unit = visible and slots[i] or nil
-    local macro = unit and ("/target " .. unit .. mark) or nil
+    -- "[@unit]": always a unit token, never read as a mob named "nameplate3".
+    local macro = unit and ("/target [@" .. unit .. "]" .. mark) or nil
     if macro ~= b.macro then
       b.macro = macro
       UnregisterStateDriver(b, "visibility")
@@ -197,6 +205,23 @@ local function assignSlots(mobs, visible)
     end
   end
   holder:SetShown(visible and #slots > 0)
+end
+
+-- For /qth dump: where the click layer is versus the panel, and the last click.
+-- (Our own frames, so measuring them is allowed.)
+function P.ClickState()
+  local function rect(f)
+    if not f then return "none" end
+    local ok, l, t, w, h = pcall(function() return f:GetLeft(), f:GetTop(), f:GetWidth(), f:GetHeight() end)
+    if not ok then return "unmeasurable" end
+    return string.format("left=%s top=%s w=%s h=%s shown=%s visible=%s level=%s strata=%s mouse=%s",
+      tostring(l), tostring(t), tostring(w), tostring(h), tostring(f:IsShown()), tostring(f:IsVisible()),
+      tostring(f:GetFrameLevel()), tostring(f:GetFrameStrata()), tostring(f:IsMouseEnabled()))
+  end
+  local st = { panel = rect(frame), holder = rect(holder), slots = table.concat(slots, ","),
+    lastClick = P.lastClick, buttons = {} }
+  for i, b in ipairs(clickers or {}) do st.buttons[i] = tostring(b.macro) .. " | " .. rect(b) end
+  return st
 end
 
 -- PLAYER_REGEN_DISABLED, the last moment secure frames may change: freeze the
