@@ -73,6 +73,37 @@ eq("our named section kept", #quests, 1)
 eq("our named progress", quests[1].objectives[1].have, 1)
 eq("their named section skipped", #quests[1].objectives, 1)
 
+-- Bug: "it's not showing the quest objectives anymore" in a group. The real
+-- Forever tooltip (Sunscale Scytheclaw): every member's progress is under
+-- their name, ours too, and our "Caleb-Lock" is written "Caleb Lock".
+local SCYTHECLAW = {
+  { type = 2, leftText = "Sunscale Scytheclaw" },
+  { type = 0, leftText = "Level 18" },
+  { type = 17, leftText = "Raptor Horns" },
+  { type = 18, leftText = "Caleb Lock" },
+  { type = 8, leftText = "3/5 Intact Raptor Horn" },
+  { type = 18, leftText = "El Mayor" },
+  { type = 8, leftText = "1/5 Intact Raptor Horn" },
+}
+quests = Q.ParseTooltip(SCYTHECLAW, "Sunscale Scytheclaw", nil, "Caleb-Lock")
+eq("grouped: our section found despite 'Caleb Lock' vs 'Caleb-Lock'", #quests, 1)
+eq("grouped: our count, not the teammate's", quests[1] and quests[1].objectives[1].have, 3)
+eq("grouped: only one objective (teammate's skipped)", quests[1] and #quests[1].objectives, 1)
+eq("name key", Q.NameKey("Caleb-Lock"), Q.NameKey("Caleb Lock"))
+
+-- Our name in some other format entirely: the quest log keeps it, and the
+-- count comes from the log, never from a teammate.
+local logHas = function(title, text) return title == "Raptor Horns" and text == "Intact Raptor Horn" end
+quests = Q.ParseTooltip(SCYTHECLAW, "Sunscale Scytheclaw", nil, "SomethingElse", logHas)
+eq("unmatched name + in our log: kept", #quests, 1)
+Q.progress = { ["raptor horns"] = { ["Intact Raptor Horn"] = { have = 3, need = 5 } } }
+local have2 = Q.Progress("Raptor Horns", quests[1].objectives[1])
+eq("unmatched name: count from our log", have2, 3)
+Q.progress = {}
+-- Not in our log (a teammate's objective) and no name match: dropped.
+quests = Q.ParseTooltip(SCYTHECLAW, "Sunscale Scytheclaw", nil, "SomethingElse", function() return false end)
+eq("unmatched name + not in our log: dropped", #quests, 0)
+
 -- Titles match the log despite colour codes, case and spacing.
 eq("title key", Q.Key(" |cffffd100The Zhevra|r "), "the zhevra")
 

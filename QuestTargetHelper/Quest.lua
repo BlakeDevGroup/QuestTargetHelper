@@ -33,10 +33,24 @@ function Q.Key(title)
   return (title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("^%s+", ""):gsub("%s+$", ""):lower())
 end
 
+-- A player name as a loose key: lower case, letters and digits only. Forever
+-- writes our "Caleb-Lock" as "Caleb Lock" in tooltips.
+function Q.NameKey(name)
+  if type(name) ~= "string" then return "" end
+  return (name:lower():gsub("[^%w]", ""))
+end
+
 -- lines = { {type=, leftText=}, ... } as C_TooltipInfo returns them.
 -- isMine(title) -> false drops a quest that isn't in our own quest log.
 -- playerName: a QuestPlayer line with our own name heads *our* progress.
-function Q.ParseTooltip(lines, mobName, isMine, playerName)
+-- inLog(title, text) -> true if our quest log has that objective: then an
+--   objective listed only under other names is kept (counts then come from
+--   our log, never from a teammate), in case our name doesn't match.
+--
+-- Grouped, Forever lists every member's progress under their name, ours too:
+--   17 Raptor Horns / 18 Caleb Lock / 8 5/5 Intact Raptor Horn / 18 El Mayor / 8 1/5 ...
+function Q.ParseTooltip(lines, mobName, isMine, playerName, inLog)
+  local me = Q.NameKey(playerName)
   local quests, current, theirs = {}, nil, false
   for _, l in ipairs(lines) do
     if l.type == LINE_TITLE and type(l.leftText) == "string" then
@@ -45,28 +59,44 @@ function Q.ParseTooltip(lines, mobName, isMine, playerName)
         current = nil
         theirs = true -- a teammate's quest: skip its objectives too
       else
-        current = { title = l.leftText, objectives = {} }
+        current = { title = l.leftText, objectives = {}, others = {} }
         quests[#quests + 1] = current
       end
     elseif l.type == LINE_PLAYER then
       -- What follows is that player's progress: ours only under our own name.
-      theirs = not (playerName and Q.Key(l.leftText) == Q.Key(playerName))
+      theirs = not (me ~= "" and Q.NameKey(l.leftText) == me)
       if theirs and current then current.teammates = true end
-    elseif l.type == LINE_OBJECTIVE and not theirs then
+    elseif l.type == LINE_OBJECTIVE and (current or not theirs) then
+      -- (no current quest + theirs = a quest not in our log: skip its lines)
       local o = Q.ParseObjective(l.leftText, mobName)
       if o then
         if not current then
-          current = { title = "", objectives = {} }
+          current = { title = "", objectives = {}, others = {} }
           quests[#quests + 1] = current
         end
-        current.objectives[#current.objectives + 1] = o
+        if theirs then
+          current.others[#current.others + 1] = o
+        else
+          current.objectives[#current.objectives + 1] = o
+        end
       end
     end
   end
-  -- Drop a quest whose only progress lines were teammates'. A quest with no
-  -- countable objective at all still counts: it marks a quest mob.
   local out = {}
   for _, q in ipairs(quests) do
+    -- Our name never matched, but our log has the objective: keep it.
+    if #q.objectives == 0 and inLog then
+      local seen = {}
+      for _, o in ipairs(q.others) do
+        if not seen[o.text] and inLog(q.title, o.text) then
+          seen[o.text] = true
+          q.objectives[#q.objectives + 1] = o
+        end
+      end
+    end
+    q.others = nil
+    -- Drop a quest whose only progress lines were teammates'. A quest with no
+    -- countable objective at all still counts: it marks a quest mob.
     if #q.objectives > 0 or not q.teammates then out[#out + 1] = q end
   end
   return out
@@ -132,6 +162,13 @@ local function isMine(title)
 end
 Q.IsMine = isMine
 
+-- Does our own quest log list this objective (by quest title + text)?
+local function inLog(title, text)
+  local t = Q.progress[Q.Key(title)]
+  return t ~= nil and t[text] ~= nil
+end
+Q.InLog = inLog
+
 -- Unfinished objectives this mob counts for, counts from the quest log.
 function Q.OpenObjectives(entry)
   return ns.Rules.OpenObjectives(entry, Q.Progress)
@@ -165,7 +202,7 @@ function Q.ForUnit(unit, now)
         lines[i] = {}
       end
     end
-    quests = Q.ParseTooltip(lines, name, isMine, UnitName("player"))
+    quests = Q.ParseTooltip(lines, name, isMine, UnitName("player"), inLog)
   end
   e = { at = now, seen = now, name = plain(name) and name or "?", quests = quests, threat = threat }
   Q.cache[guid] = e
