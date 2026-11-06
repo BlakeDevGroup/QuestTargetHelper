@@ -117,6 +117,11 @@ local function buildClickers()
         macro = tostring(self.macro), rowMob = rowMob, target = ns.Describe(name),
         macrotext = tostring(self:GetAttribute(button == "RightButton" and "macrotext2" or "macrotext1")),
         type = tostring(self:GetAttribute("type")) }
+      -- Always kept (last 20) so a /reload is enough to inspect clicks.
+      QuestTargetHelperDB.clicks = QuestTargetHelperDB.clicks or {}
+      local log = QuestTargetHelperDB.clicks
+      log[#log + 1] = P.lastClick
+      while #log > 20 do table.remove(log, 1) end
       if ns.settings.clickLog then
         print(string.format("|cff55ff55QTH|r click row %d (%s, %s) %s %s -> target now: %s",
           i, tostring(unit), rowMob, tostring(button), down and "down" or "up", ns.Describe(name)))
