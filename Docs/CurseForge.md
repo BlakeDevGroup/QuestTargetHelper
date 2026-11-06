@@ -6,7 +6,7 @@ Everything needed to fill in the project page. Copy each block as is.
 QuestTargetHelper
 
 ## Summary (the one line under the name and in search results)
-See at a glance which mobs your DoTs will kill, and click quest mobs to target them. Built for WoW Forever.
+Track your DoTs on every mob at once: see which ones will die, and click quest mobs to target them. Built for WoW Forever.
 
 ## Categories
 - Primary: **Quests & Leveling**
