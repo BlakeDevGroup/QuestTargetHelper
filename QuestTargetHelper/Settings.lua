@@ -25,6 +25,11 @@ ns.DEFAULTS = {
   skullSize = 16,
   panelMode = 3,      -- index into ns.PANEL_MODES: Off / In combat / Quest mobs nearby / Always
   panelLocked = false,
+  markSkull = true,   -- the keybind also puts a skull on the mob it targets
+  nextMarker = true,  -- green outline on the next mob's nameplate
+  doubleDip = true,   -- "x2" on mobs counting for 2+ objectives
+  alerts = true,      -- quest complete / nothing left here
+  alertSound = true,
   probeRec = false,
 }
 
@@ -73,6 +78,18 @@ function ns.RegisterSettings()
     "Quest objectives with kills in flight (quest mobs carrying your DoTs), and nearby quest mobs with their kill zones.")
   Checkbox("panelLocked", "Lock the pull tracker",
     "Unlocked, drag it to move it. Locked, clicks go through it.")
+
+  Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
+    "Next quest mob keybind", "Bind", function()
+      if Settings.KEYBINDINGS_CATEGORY_ID then Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID) end
+      print("|cff55ff55QTH|r Key Bindings > AddOns > QuestTargetHelper > Target next quest mob")
+    end, "Targets the best unfinished quest mob nearby: not tagged by someone else, not already dotted, two objectives before one.", false))
+  Checkbox("markSkull", "Keybind puts a skull on the mob", nil)
+  Checkbox("nextMarker", "Outline the next mob's nameplate",
+    "Out of combat only: in combat the key targets by name, so there is no exact next mob to show.")
+  Checkbox("doubleDip", "Show x2 on mobs that count for two objectives", nil)
+  Checkbox("alerts", "Announce completed quests and \"nothing left here\"", nil)
+  Checkbox("alertSound", "Play a sound with announcements", nil)
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "Feedback and bug reports", "Open", function() ns.ShowFeedback() end, nil, false))

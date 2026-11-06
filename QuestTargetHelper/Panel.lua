@@ -195,7 +195,9 @@ function P.Refresh(now)
   for i = 1, n do
     local m, r = mobs[i], row(i)
     r:SetPoint("TOPLEFT", 8, y)
-    r.name:SetText(m.tapped and ("|cff888888" .. m.name .. "|r") or m.name)
+    local label = m.tapped and ("|cff888888" .. m.name .. "|r") or m.name
+    if ns.Targeting.nextUnit == m.unit then label = "|cff40ff40>|r " .. label end
+    r.name:SetText(label)
     r.bar:SetMinMaxValues(0, UnitHealthMax(m.unit))
     r.bar:SetValue(UnitHealth(m.unit))
     r.bar:SetStatusBarColor(m.tapped and 0.4 or 0.75, m.tapped and 0.4 or 0.2, m.tapped and 0.4 or 0.2)

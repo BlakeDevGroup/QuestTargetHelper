@@ -6,7 +6,7 @@ local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
@@ -61,6 +61,9 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       Frames.OnPlateRemoved(a1)
     elseif event == "QUEST_LOG_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
       ns.Quest.Invalidate()
+      ns.Alerts.OnQuestLog()
+    elseif event == "PLAYER_REGEN_DISABLED" then
+      ns.Targeting.EnterCombat(GetTime()) -- last moment the secure button may change
     elseif event == "ADDON_LOADED" and a1 == ADDON then
       QuestTargetHelperDB = QuestTargetHelperDB or {}
       QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
@@ -76,9 +79,16 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
       f:RegisterEvent("QUEST_LOG_UPDATE")
       f:RegisterUnitEvent("UNIT_QUEST_LOG_CHANGED", "player")
+      f:RegisterEvent("PLAYER_REGEN_DISABLED")
       if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
-      C_Timer.NewTicker(0.25, function() ns.SafeCall("panel", ns.Panel.Refresh, GetTime()) end)
+      -- Quest-side work at 4x/s: pick the next mob first so the panel and markers show it.
+      C_Timer.NewTicker(0.25, function()
+        local now = GetTime()
+        ns.SafeCall("targeting", ns.Targeting.Refresh, now)
+        ns.SafeCall("panel", ns.Panel.Refresh, now)
+        ns.SafeCall("markers", ns.Markers.Update, now)
+      end)
     end
   end)
 end)

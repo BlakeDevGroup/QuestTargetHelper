@@ -1,0 +1,69 @@
+-- Nameplate markers, display only:
+--  * a green outline on the mob the keybind will target next (out of combat;
+--    in combat the button targets by name, so there is no exact "next");
+--  * "x2" (x3...) on mobs that count for two or more unfinished objectives.
+local _, ns = ...
+local Frames, Quest = ns.Frames, ns.Quest
+
+local M = {}
+ns.Markers = M
+
+local marked = {} -- bar -> true for bars carrying our markers this pass
+
+local function build(bar)
+  local m = CreateFrame("Frame", nil, bar)
+  m:SetAllPoints(bar)
+  m:SetFrameLevel(bar:GetFrameLevel() + 5)
+  local edges = {}
+  for i, spec in ipairs({
+    { "TOPLEFT", "TOPRIGHT", 0, 2, true }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, -2, true },
+    { "TOPLEFT", "BOTTOMLEFT", -2, 0, false }, { "TOPRIGHT", "BOTTOMRIGHT", 2, 0, false },
+  }) do
+    local t = m:CreateTexture(nil, "OVERLAY")
+    t:SetColorTexture(0.25, 1, 0.35, 0.95)
+    t:SetPoint(spec[1], bar, spec[1], spec[3], spec[4])
+    t:SetPoint(spec[2], bar, spec[2], spec[3], spec[4])
+    if spec[5] then t:SetHeight(2) else t:SetWidth(2) end
+    edges[i] = t
+  end
+  m.edges = edges
+  m.count = m:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  m.count:SetPoint("RIGHT", bar, "LEFT", -3, 0)
+  m.count:SetTextColor(1, 0.82, 0)
+  bar.__qthMarks = m
+  return m
+end
+
+local function show(bar, isNext, open)
+  local m = bar.__qthMarks or build(bar)
+  for _, t in ipairs(m.edges) do t:SetShown(isNext) end
+  m.count:SetText(open >= 2 and ("x" .. open) or "")
+  m:Show()
+  marked[bar] = true
+end
+
+function M.Update(now)
+  local s = ns.settings
+  local nextUnit = s.nextMarker and ns.Targeting.nextUnit or nil
+  local still = {}
+  for unit in pairs(Frames.plates) do
+    local bar = Frames.PlateBar(unit)
+    if bar then
+      local isNext = unit == nextUnit
+      local open = 0
+      if s.doubleDip then
+        local guid = UnitGUID(unit)
+        local e = guid and not ns.IsSecret(guid) and Quest.cache[guid] -- never index with a secret
+        if e then open = Quest.OpenObjectives(e) end
+      end
+      if isNext or open >= 2 then
+        show(bar, isNext, open)
+        still[bar] = true
+      end
+    end
+  end
+  for bar in pairs(marked) do
+    if not still[bar] and bar.__qthMarks then bar.__qthMarks:Hide() end
+  end
+  marked = still
+end

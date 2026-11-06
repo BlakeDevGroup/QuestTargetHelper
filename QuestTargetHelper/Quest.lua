@@ -42,6 +42,17 @@ function Q.ParseTooltip(lines, mobName)
   return quests
 end
 
+-- Unfinished objectives this mob counts for (2+ = one kill, two objectives).
+function Q.OpenObjectives(entry)
+  local n = 0
+  for _, q in ipairs(entry.quests) do
+    for _, o in ipairs(q.objectives) do
+      if o.have < o.need then n = n + 1 end
+    end
+  end
+  return n
+end
+
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 
 -- Quest info for the mob behind `unit`, cached per GUID. Returns guid, entry

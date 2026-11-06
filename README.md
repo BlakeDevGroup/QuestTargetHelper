@@ -15,8 +15,18 @@ A small panel shows your quest objectives for the mobs around you, and how many 
 
 Set it to show in combat, when quest mobs are nearby (default), always, or never. Drag it to move it, then lock it so clicks go through.
 
-## Quest-mob targeting
-*Coming next:* one keybind targets the next mob your quests need and marks it with a skull.
+## Next quest mob keybind
+Bind **Target next quest mob** (Key Bindings → AddOns → QuestTargetHelper). One press targets the best quest mob around you and puts a skull on it.
+- It skips mobs another player tagged, mobs already carrying your DoTs, and mobs whose objectives you've finished.
+- It prefers **double-dip** mobs: one kill that advances two objectives.
+- Out of combat, it targets exactly the mob outlined in green on its nameplate (and marked `>` in the pull tracker).
+- In combat, Forever won't let addons change the key's target, so it targets the quest mobs by name and moves on from your current target.
+
+Forever doesn't allow targeting or marking without a key press, so this is a keybind, not automatic.
+
+## Markers and alerts
+- **x2** beside a nameplate: that mob counts for two unfinished objectives.
+- **Quest complete** and **"Nothing left to kill here, go turn in"** announcements, with a sound.
 
 ## Commands
 - `/qth`: settings (also under Options → AddOns)

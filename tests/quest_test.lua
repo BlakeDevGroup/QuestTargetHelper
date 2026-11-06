@@ -39,6 +39,10 @@ eq("first objective", quests[1].objectives[1].text, "Zhevra Hooves")
 eq("second objective have", quests[2].objectives[1].have, 2)
 eq("threat line ignored", #quests[1].objectives, 1)
 
+eq("open objectives across quests", Q.OpenObjectives({ quests = quests }), 2)
+eq("finished objective not open", Q.OpenObjectives({ quests = {
+  { title = "A", objectives = { { have = 4, need = 4 }, { have = 1, need = 3 } } } } }), 1)
+
 eq("no quest lines", #Q.ParseTooltip({ { type = 2, leftText = "Wolf" } }, "Wolf"), 0)
 
 if failures == 0 then print("all quest tests passed") else print(failures .. " failure(s)") os.exit(1) end
