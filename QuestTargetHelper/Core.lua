@@ -1,20 +1,19 @@
 local ADDON, ns = ...
 local Tracker, Frames, Overlay = ns.Tracker, ns.Frames, ns.Overlay
 
-local DEFAULTS = { enabled = true, plates = true, skullSize = 14, probeRec = false }
-local settings = DEFAULTS
 local PREFIX = "|cff55ff55QTH|r "
-
 local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
   return
 end
+
+ns.settings = ns.DEFAULTS
 
 -- Redraw every visible bar. Runs 10x/s, but only while some mob has our DoTs
 -- (plus one extra pass to hide the zones after the last one ends).
@@ -22,20 +21,28 @@ local hadAny = false
 local function draw(unit, bar, now, visible)
   if not bar then return end
   local guid = visible and Tracker.GuidFor(unit)
-  Overlay.Update(bar, unit, guid and Tracker.Remaining(guid, now) or 0, settings.skullSize)
+  Overlay.Update(bar, unit, guid and Tracker.Remaining(guid, now) or 0)
 end
 
 local function refresh()
   local any = next(Tracker.byGuid) ~= nil
   if not any and not hadAny then return end
   hadAny = any
-  local now = GetTime()
-  local on = settings.enabled
-  draw("target", Frames.TargetBar(), now, on)
-  draw("focus", Frames.FocusBar(), now, on)
+  local s, now = ns.settings, GetTime()
+  local frames = s.enabled and s.unitFrames
+  draw("target", Frames.TargetBar(), now, frames)
+  draw("focus", Frames.FocusBar(), now, frames)
   for unit in pairs(Frames.plates) do
-    draw(unit, Frames.PlateBar(unit), now, on and settings.plates)
+    draw(unit, Frames.PlateBar(unit), now, s.enabled and s.plates)
   end
+end
+
+function ns.OnSettingsChanged()
+  local s = ns.settings
+  local c = ns.COLORS[s.color] or ns.COLORS[1]
+  Overlay.SetStyle({ pad = s.pad, r = c[2], g = c[3], b = c[4], a = s.opacity / 100,
+    skull = s.skull, skullSize = s.skullSize })
+  hadAny = true -- one pass even with no DoTs, to hide zones that were switched off
 end
 
 local f = CreateFrame("Frame")
@@ -43,7 +50,7 @@ f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(_, event, a1, a2, a3)
   ns.SafeCall(event, function()
     if event == "UNIT_SPELLCAST_SENT" then
-      Tracker.OnCastSent(a3)
+      Tracker.OnCastSent(a2, a3) -- unit, targetName, castGUID
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
       Tracker.OnCastSucceeded(a2, a3)
     elseif event == "UNIT_COMBAT" then
@@ -55,14 +62,17 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "ADDON_LOADED" and a1 == ADDON then
       QuestTargetHelperDB = QuestTargetHelperDB or {}
       QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
-      settings = QuestTargetHelperDB.settings
-      for k, v in pairs(DEFAULTS) do if settings[k] == nil then settings[k] = v end end
+      local s = QuestTargetHelperDB.settings
+      for k, v in pairs(ns.DEFAULTS) do if s[k] == nil then s[k] = v end end
+      ns.settings = s
+      ns.SafeCall("settings", ns.RegisterSettings)
+      ns.OnSettingsChanged()
       f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
       f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
       f:RegisterUnitEvent("UNIT_COMBAT", "target")
       f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
       f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-      if settings.probeRec then ns.ProbeStartRecording() end
+      if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
     end
   end)
@@ -83,19 +93,18 @@ SLASH_QUESTTARGETHELPER1 = "/qth"
 SlashCmdList.QUESTTARGETHELPER = function(msg)
   ns.SafeCall("slash", function()
     local cmd, rest = (msg or ""):match("^(%S*)%s*(.-)$")
-    if cmd == "on" or cmd == "off" then
-      settings.enabled = cmd == "on"
-      hadAny = true
+    if cmd == "" then
+      ns.OpenSettings()
+    elseif cmd == "on" or cmd == "off" then
+      Settings.SetValue("QTH_enabled", cmd == "on")
       say("kill zone " .. cmd)
-    elseif cmd == "plates" then
-      settings.plates = not settings.plates
-      hadAny = true
-      say("nameplates " .. (settings.plates and "on" or "off"))
+    elseif cmd == "feedback" or cmd == "bug" then
+      ns.ShowFeedback()
     elseif cmd == "debug" then
       debugTarget()
     elseif cmd == "probe" and rest == "rec" then
-      settings.probeRec = not settings.probeRec
-      say("probe recording " .. (settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
+      ns.settings.probeRec = not ns.settings.probeRec
+      say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
     elseif cmd == "probe" then
       ns.ProbeSnapshot(rest ~= "" and rest or nil)
     elseif cmd == "reset" then
@@ -104,7 +113,7 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
     elseif cmd == "errors" then
       for _, e in ipairs(QuestTargetHelperDB.errors or {}) do print(e) end
     else
-      say("/qth on|off  /qth plates  /qth debug  /qth probe [label|rec]  /qth reset  /qth errors")
+      say("/qth (settings)  /qth on|off  /qth feedback  /qth debug  /qth errors")
     end
   end)
 end

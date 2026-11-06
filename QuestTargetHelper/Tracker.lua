@@ -11,8 +11,7 @@ local MISS = { MISS = true, DODGE = true, PARRY = true, RESIST = true, IMMUNE = 
   EVADE = true, DEFLECT = true, BLOCK = true, REFLECT = true }
 local MISS_WINDOW = 0.6 -- seconds after a cast in which a miss on that mob cancels it
 
-local pendingCombo = {} -- castGUID -> combo points before the finisher spent them
-local lastApplied        -- { guid, name, at } for miss detection
+local lastApplied       -- { guid, name, at } for miss detection
 
 local function plain(v) return v ~= nil and not IsSecret(v) end
 
@@ -28,10 +27,39 @@ function T.GuidFor(unit)
   return nil
 end
 
-function T.OnCastSent(castGUID)
+-- Where a cast is going. UNIT_SPELLCAST_SENT names the cast target (plain in
+-- combat), which may not be our target: soft target, mouseover or @focus
+-- macros, or no target at all. Find the unit with that name, preferring the
+-- hard target when several mobs share it.
+local CANDIDATES = { "target", "softenemy", "mouseover", "focus" }
+
+local function unitNamed(name)
+  local function matches(unit)
+    local n = UnitName(unit)
+    if not plain(n) or n ~= name then return false end
+    local hostile = UnitCanAttack("player", unit)
+    return plain(hostile) and hostile == true
+  end
+  for _, unit in ipairs(CANDIDATES) do
+    if matches(unit) then return unit end
+  end
+  for unit in pairs(ns.Frames.plates) do
+    if matches(unit) then return unit end
+  end
+  return nil
+end
+
+local pending = {}  -- castGUID -> { guid, cp } captured when the cast started
+local pendingCount = 0
+
+function T.OnCastSent(targetName, castGUID)
   if not plain(castGUID) then return end
-  local cp = GetComboPoints and GetComboPoints("player", "target")
-  if plain(cp) then pendingCombo[castGUID] = cp end
+  local unit = "target"
+  if plain(targetName) and targetName ~= "" then unit = unitNamed(targetName) or "target" end
+  local cp = GetComboPoints and GetComboPoints("player", unit)
+  if pendingCount > 50 then pending, pendingCount = {}, 0 end -- casts that never succeeded
+  pending[castGUID] = { guid = T.GuidFor(unit), cp = plain(cp) and cp or nil }
+  pendingCount = pendingCount + 1
 end
 
 function T.OnCastSucceeded(castGUID, spellID)
@@ -40,7 +68,9 @@ function T.OnCastSucceeded(castGUID, spellID)
   if not plain(name) then return end
   local def = ns.Spells[name]
   if not def then return end
-  local guid = T.GuidFor("target")
+  local sent = plain(castGUID) and pending[castGUID]
+  if sent then pending[castGUID] = nil; pendingCount = pendingCount - 1 end
+  local guid = (sent and sent.guid) or T.GuidFor("target")
   if not guid then return end
 
   local desc = C_Spell.GetSpellDescription(spellID)
@@ -48,8 +78,7 @@ function T.OnCastSucceeded(castGUID, spellID)
     C_Spell.RequestLoadSpellData(spellID)
     return
   end
-  local cp = plain(castGUID) and pendingCombo[castGUID]
-  if plain(castGUID) then pendingCombo[castGUID] = nil end
+  local cp = sent and sent.cp
   local total, duration, tick = M.ParseDescription(desc, def.model, cp)
   if not total or not duration or duration <= 0 then return end
 
