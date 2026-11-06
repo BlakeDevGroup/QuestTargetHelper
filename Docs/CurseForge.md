@@ -64,7 +64,7 @@ Bind **Target next quest mob**. One press targets the best quest mob around you 
 ### How it works on Forever (and why it doesn't break)
 Forever hides mob health, aura data and damage numbers from addons in combat. Addon code can't compare "DoT damage left" with "health left". A health bar can, though: the kill zone is a bar scaled to the mob's max health, so the game draws the comparison and the addon never reads health. The rules it decides with (what's a quest mob, what's fighting you, which mob is next, DoT math) are covered by automated tests that run on every change.
 
-For the same reason, **targeting and looting need a key press**: Forever doesn't let addons target or interact on their own. Anything that claims otherwise isn't allowed on Forever.
+For the same reason, **targeting and looting need a key press**: Forever doesn't let addons target or interact on their own, so QuestTargetHelper sets up the key and you press it.
 
 ### Feedback
 Found a bug or have an idea? Type `/qth feedback` in game, or open an issue on [GitHub](https://github.com/BlakeDevGroup/QuestTargetHelper/issues).
