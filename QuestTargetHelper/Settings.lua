@@ -31,6 +31,7 @@ ns.DEFAULTS = {
   alerts = true,      -- quest complete / nothing left here
   alertSound = true,
   lootHint = true,    -- "Loot: press F" when the corpse in front of you has loot
+  plateRange = 0,     -- nameplateMaxDistance in yards; 0 = leave the game's value
   probeRec = false,
 }
 
@@ -74,6 +75,9 @@ function ns.RegisterSettings()
   Slider("skullSize", "Skull size", 10, 32, 2,
     function(v) return v .. " px" end, nil)
 
+  Slider("plateRange", "Nameplate range", 0, 60, 1,
+    function(v) return v == 0 and "Game default" or (v .. " yd") end,
+    "How far away nameplates appear, and with them the mobs the pull tracker and keybind can see. The game caps it; the value it accepts is printed in chat. Plater has its own setting for this, which this overrides after login.")
   Slider("panelMode", "Pull tracker panel", 1, #ns.PANEL_MODES, 1,
     function(v) return ns.PANEL_MODES[v] or "?" end,
     "Nearby quest mobs with their kill zones (click one to target it) and the objectives they count for.")

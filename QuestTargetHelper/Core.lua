@@ -37,8 +37,21 @@ local function refresh()
   end
 end
 
+-- Nameplate range (CVar nameplateMaxDistance). Out of combat only; says what
+-- the game actually accepted, since it caps the value.
+local lastRange
+function ns.ApplyPlateRange(announce)
+  local v = ns.settings.plateRange
+  if not v or v <= 0 or InCombatLockdown() then return end
+  SetCVar("nameplateMaxDistance", v)
+  local got = tonumber(GetCVar("nameplateMaxDistance"))
+  if announce and got ~= lastRange then say("nameplate range " .. tostring(got) .. " yd") end
+  lastRange = got
+end
+
 function ns.OnSettingsChanged()
   local s = ns.settings
+  ns.ApplyPlateRange(true)
   local c = ns.COLORS[s.color] or ns.COLORS[1]
   Overlay.SetStyle({ pad = s.pad, r = c[2], g = c[3], b = c[4], a = s.opacity / 100,
     skull = s.skull, skullSize = s.skullSize })
@@ -62,6 +75,9 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "QUEST_LOG_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
       ns.Quest.Invalidate()
       ns.Alerts.OnQuestLog()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+      -- After Plater has applied its own range at login.
+      C_Timer.After(2, function() ns.SafeCall("range", ns.ApplyPlateRange, false) end)
     elseif event == "PLAYER_REGEN_DISABLED" then
       ns.Targeting.EnterCombat(GetTime()) -- last moment secure buttons may change
       ns.Panel.EnterCombat(GetTime())
@@ -81,6 +97,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       f:RegisterEvent("QUEST_LOG_UPDATE")
       f:RegisterUnitEvent("UNIT_QUEST_LOG_CHANGED", "player")
       f:RegisterEvent("PLAYER_REGEN_DISABLED")
+      f:RegisterEvent("PLAYER_ENTERING_WORLD")
       if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
       -- Quest-side work at 4x/s: pick the next mob first so the panel and markers show it.
