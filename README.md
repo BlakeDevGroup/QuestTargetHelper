@@ -11,9 +11,11 @@ Your DoTs are marked on the health bar of every mob you've dotted: on nameplates
 - Classes: Warlock, Priest, Druid, Hunter, Mage, Rogue, Shaman, Warrior.
 
 ## Pull tracker
-A small panel shows your quest objectives for the mobs around you, and how many kills are **in flight**: quest mobs carrying your DoTs. *"Zhevra Hooves 2/4 +2 dotted ✔"* means the DoTs already out will finish a kill objective, so stop pulling. Below the objectives are the nearby quest mobs, each with a mini health bar, its kill zone and skull, and grey if another player tagged it.
+A small panel lists the quest mobs around you, each with a mini health bar, its kill zone and skull, greyed if another player tagged it. **Click a mob to target it** (and skull it, if that setting is on). Below them are the objectives those mobs count for.
 
-Set it to show in combat, when quest mobs are nearby (default), always, or never. Drag it to move it, then lock it so clicks go through.
+In combat the row order holds still, because the game won't let clickable buttons move mid-fight. The rows themselves keep updating.
+
+Set it to show in combat, when quest mobs are nearby (default), always, or never. Drag it by the objectives to move it, then lock it.
 
 ## Next quest mob keybind
 Bind **Target next quest mob** (Key Bindings → AddOns → QuestTargetHelper). One press targets the best quest mob around you and puts a skull on it.

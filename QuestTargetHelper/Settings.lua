@@ -75,9 +75,9 @@ function ns.RegisterSettings()
 
   Slider("panelMode", "Pull tracker panel", 1, #ns.PANEL_MODES, 1,
     function(v) return ns.PANEL_MODES[v] or "?" end,
-    "Quest objectives with kills in flight (quest mobs carrying your DoTs), and nearby quest mobs with their kill zones.")
+    "Nearby quest mobs with their kill zones (click one to target it) and the objectives they count for.")
   Checkbox("panelLocked", "Lock the pull tracker",
-    "Unlocked, drag it to move it. Locked, clicks go through it.")
+    "Unlocked, drag it by the objectives to move it. Locked, clicks outside the mob rows go through it.")
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "Next quest mob keybind", "Bind", function()

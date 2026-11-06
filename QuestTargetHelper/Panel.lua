@@ -1,13 +1,21 @@
--- Pull tracker: quest objectives with "kills in flight" (quest mobs carrying
--- our DoTs), and the nearby quest mobs with mini health bars + kill zone.
--- Display only, so it may update freely in combat. Health stays secret: the
--- row bars take UnitHealth straight into SetValue, like the kill zone.
+-- Pull tracker: nearby quest mobs (clickable: left-click targets, and skulls
+-- if that setting is on) with mini health bars + kill zone, and the quest
+-- objectives they count for.
+--
+-- Clicking needs secure buttons, which can't be moved, shown, hidden or
+-- re-aimed in combat, and anything that contains them can't be hidden or
+-- resized either. So:
+--  * the click layer is its own frame (`holder`), only touched out of combat;
+--  * mob rows sit at fixed slots at the top, objectives below them;
+--  * each slot is bound to a nameplate token. Display and click both read that
+--    token, so what you click is what the row shows, even if the plate is
+--    reused for another mob mid-fight;
+--  * in combat the slot -> token mapping freezes; rows keep updating live.
 local _, ns = ...
 local Tracker, Frames, Overlay, Quest = ns.Tracker, ns.Frames, ns.Overlay, ns.Quest
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local READY = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t"
-local WIDTH, ROW_H, LINE_H, MAX_ROWS = 250, 18, 15, 6
+local WIDTH, ROW_H, LINE_H, MAX_ROWS, TOP = 250, 18, 15, 6, -8
 
 ns.PANEL_MODES = { "Off", "In combat", "Quest mobs nearby", "Always" }
 
@@ -15,6 +23,8 @@ local P = {}
 ns.Panel = P
 
 local frame, lines, rows
+local holder, clickers
+local slots = {} -- slot index -> nameplate token
 
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 local function isTrue(v) return plain(v) and v == true end
@@ -40,11 +50,36 @@ local function build()
   bg:SetColorTexture(0, 0, 0, 0.55)
   frame:SetMovable(true)
   frame:RegisterForDrag("LeftButton")
-  frame:SetScript("OnDragStart", frame.StartMoving)
+  frame:SetScript("OnDragStart", function() if not InCombatLockdown() then frame:StartMoving() end end)
   frame:SetScript("OnDragStop", function() frame:StopMovingOrSizing() savePosition() end)
-
   lines, rows = {}, {}
   frame:Hide()
+end
+
+-- Secure click layer. Parented to UIParent, not the panel, so the panel stays
+-- an ordinary frame that may hide and resize in combat.
+local function buildClickers()
+  if clickers or InCombatLockdown() then return end
+  holder = CreateFrame("Frame", "QuestTargetHelperPanelClicks", UIParent)
+  holder:SetPoint("TOPLEFT", frame, "TOPLEFT")
+  holder:SetSize(WIDTH, MAX_ROWS * ROW_H - TOP)
+  holder:SetFrameStrata("MEDIUM")
+  holder:SetFrameLevel(frame:GetFrameLevel() + 20)
+  clickers = {}
+  for i = 1, MAX_ROWS do
+    local b = CreateFrame("Button", "QuestTargetHelperPanelRow" .. i, holder, "SecureActionButtonTemplate")
+    b:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, TOP - (i - 1) * ROW_H)
+    b:SetSize(WIDTH - 16, ROW_H)
+    b:SetAttribute("type", "macro")
+    b:SetAttribute("macrotext", "")
+    b:RegisterForClicks("AnyUp")
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.12)
+    b:Hide()
+    clickers[i] = b
+  end
+  holder:Hide()
 end
 
 local function line(i)
@@ -63,6 +98,7 @@ local function row(i)
   if not r then
     r = CreateFrame("Frame", nil, frame)
     r:SetSize(WIDTH - 16, ROW_H)
+    r:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, TOP - (i - 1) * ROW_H)
     r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     r.name:SetPoint("LEFT")
     r.name:SetWidth(100)
@@ -72,7 +108,6 @@ local function row(i)
     r.bar:SetPoint("LEFT", r.name, "RIGHT", 4, 0)
     r.bar:SetSize(100, 10)
     r.bar:SetStatusBarTexture(WHITE)
-    r.bar:SetStatusBarColor(0.75, 0.2, 0.2)
     local back = r.bar:CreateTexture(nil, "BACKGROUND")
     back:SetAllPoints()
     back:SetColorTexture(0.15, 0.15, 0.15, 0.9)
@@ -81,11 +116,78 @@ local function row(i)
   return r
 end
 
-local function shouldShow(mode, anyObjective)
+local function shouldShow(mode, any)
   if mode == 4 then return true end
   if mode == 2 then return InCombatLockdown() end
-  if mode == 3 then return anyObjective end
+  if mode == 3 then return any end
   return false
+end
+
+-- Quest mobs on nameplates, best rows first: dotted (most damage coming), then the rest.
+local function nearbyQuestMobs(now)
+  local mobs = {}
+  for unit in pairs(Frames.plates) do
+    if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit)) then
+      local guid, e = Quest.ForUnit(unit, now)
+      if guid and #e.quests > 0 then
+        mobs[#mobs + 1] = { unit = unit, rem = Tracker.Remaining(guid, now) }
+      end
+    end
+  end
+  table.sort(mobs, function(a, b)
+    if (a.rem > 0) ~= (b.rem > 0) then return a.rem > 0 end
+    if a.rem ~= b.rem then return a.rem > b.rem end
+    return a.unit < b.unit
+  end)
+  return mobs
+end
+
+-- Out of combat only: point slots and their click buttons at the current mobs.
+local function assignSlots(now, visible)
+  buildClickers()
+  local mobs = nearbyQuestMobs(now)
+  wipe(slots)
+  for i = 1, math.min(#mobs, MAX_ROWS) do slots[i] = mobs[i].unit end
+  if not clickers then return end
+  local mark = ns.settings.markSkull and "\n/tm !8" or ""
+  for i, b in ipairs(clickers) do
+    local unit = slots[i]
+    if unit and visible then
+      b:SetAttribute("macrotext", "/target " .. unit .. mark)
+      b:Show()
+    else
+      b:Hide()
+    end
+  end
+  holder:SetShown(visible and #slots > 0)
+end
+
+-- PLAYER_REGEN_DISABLED, the last moment secure frames may change: freeze the
+-- slots, and make them clickable even in "In combat" mode (hidden until now).
+function P.EnterCombat(now)
+  if not frame or ns.settings.panelMode == 1 then return end
+  assignSlots(now, true)
+end
+
+-- Show one row for the mob behind `unit` right now (the token may have moved on).
+local function drawRow(r, unit, now, s)
+  local guid = Tracker.GuidFor(unit)
+  local name = nil
+  if Frames.plates[unit] ~= nil then name = UnitName(unit) end
+  if not guid or not plain(name) then
+    r.name:SetText("|cff666666-|r")
+    r.bar:Hide()
+    return
+  end
+  local grey = isTrue(UnitIsDead(unit)) or (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit)))
+  local label = grey and ("|cff888888" .. name .. "|r") or name
+  if ns.Targeting.nextUnit == unit then label = "|cff40ff40>|r " .. label end
+  r.name:SetText(label)
+  r.bar:SetMinMaxValues(0, UnitHealthMax(unit))
+  r.bar:SetValue(UnitHealth(unit))
+  if grey then r.bar:SetStatusBarColor(0.4, 0.4, 0.4) else r.bar:SetStatusBarColor(0.75, 0.2, 0.2) end
+  Overlay.Update(r.bar, unit, s.enabled and Tracker.Remaining(guid, now) or 0)
+  r.bar:Show()
 end
 
 function P.Refresh(now)
@@ -94,64 +196,60 @@ function P.Refresh(now)
     if s.panelMode == 1 then return end
     build()
   end
-  frame:EnableMouse(not s.panelLocked)
+  local combat = InCombatLockdown()
+  if not combat then frame:EnableMouse(not s.panelLocked) end
 
-  -- Nearby quest mobs from the nameplates.
-  local mobs, objectives, order = {}, {}, {}
-  local function objectiveFor(q, o)
-    local key = q.title .. "\n" .. o.text
-    local obj = objectives[key]
-    if not obj then
-      obj = { title = q.title, text = o.text, have = o.have, need = o.need, kill = o.kill, dotted = 0 }
-      objectives[key] = obj
-      order[#order + 1] = key
-    elseif o.have > obj.have then
-      obj.have = o.have
-    end
-    return obj
-  end
-
+  -- Objectives of the quest mobs on screen (finished ones drop out).
+  local objectives, order = {}, {}
   for unit in pairs(Frames.plates) do
-    if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit)) then
+    if isTrue(UnitCanAttack("player", unit)) then
       local guid, e = Quest.ForUnit(unit, now)
-      if guid and #e.quests > 0 then
+      if guid then
         for _, q in ipairs(e.quests) do
-          for _, o in ipairs(q.objectives) do objectiveFor(q, o) end
-        end
-        mobs[#mobs + 1] = { unit = unit, guid = guid, name = e.name,
-          rem = Tracker.Remaining(guid, now), tapped = UnitIsTapDenied ~= nil and isTrue(UnitIsTapDenied(unit)) }
-      end
-    end
-  end
-
-  -- Kills in flight: every dotted mob we know a quest for, on a plate or not.
-  for guid in pairs(Tracker.byGuid) do
-    local e = Quest.cache[guid]
-    if e and Tracker.Remaining(guid, now) > 0 then
-      for _, q in ipairs(e.quests) do
-        for _, o in ipairs(q.objectives) do
-          local obj = objectiveFor(q, o)
-          obj.dotted = obj.dotted + 1
+          for _, o in ipairs(q.objectives) do
+            local key = q.title .. "\n" .. o.text
+            local obj = objectives[key]
+            if not obj then
+              objectives[key] = { title = q.title, text = o.text, have = o.have, need = o.need }
+              order[#order + 1] = key
+            elseif o.have > obj.have then
+              obj.have = o.have
+            end
+          end
         end
       end
     end
   end
-  Quest.Prune(now, Tracker.byGuid)
-
-  -- Finished objectives drop out.
   local shown = {}
   for _, key in ipairs(order) do
     local o = objectives[key]
     if o.have < o.need then shown[#shown + 1] = o end
   end
 
-  if not shouldShow(s.panelMode, #shown > 0) then
+  -- Visibility. In combat the click layer can't be hidden, so while it is up
+  -- the panel stays up too (otherwise clicks would land on an invisible row).
+  local want = shouldShow(s.panelMode, #shown > 0)
+  if not combat then
+    assignSlots(now, want)
+  elseif holder and holder:IsShown() then
+    want = true
+  end
+  if not want then
     frame:Hide()
     return
   end
 
-  -- Objective lines, grouped under their quest title.
-  local y, li, lastTitle = -8, 0, nil
+  -- Mob rows at fixed slots.
+  local n = #slots
+  for i = 1, n do
+    local r = row(i)
+    drawRow(r, slots[i], now, s)
+    r:Show()
+  end
+  for i = n + 1, #rows do rows[i]:Hide() end
+
+  -- Objective lines below, grouped under their quest title.
+  local y, li, lastTitle = TOP - n * ROW_H - (n > 0 and 4 or 0), 0, nil
   for _, o in ipairs(shown) do
     if o.title ~= lastTitle and o.title ~= "" then
       li = li + 1
@@ -164,17 +262,11 @@ function P.Refresh(now)
     li = li + 1
     local t = line(li)
     t:SetPoint("TOPLEFT", 16, y)
-    local text = string.format("%s  %d/%d", o.text, o.have, o.need)
-    if o.dotted > 0 then
-      local enough = o.kill and o.have + o.dotted >= o.need
-      text = text .. string.format("  |cff%s+%d dotted|r", enough and "40ff40" or "ffff40", o.dotted)
-      if enough then text = text .. " " .. READY end
-    end
-    t:SetText(text)
+    t:SetText(string.format("%s  %d/%d", o.text, o.have, o.need))
     t:Show()
     y = y - LINE_H
   end
-  if #shown == 0 then
+  if #shown == 0 and n == 0 then
     li = li + 1
     local t = line(li)
     t:SetPoint("TOPLEFT", 8, y)
@@ -183,29 +275,6 @@ function P.Refresh(now)
     y = y - LINE_H
   end
   for i = li + 1, #lines do lines[i]:Hide() end
-
-  -- Mob rows: dotted first (most damage still coming), then the rest.
-  table.sort(mobs, function(a, b)
-    if (a.rem > 0) ~= (b.rem > 0) then return a.rem > 0 end
-    if a.rem ~= b.rem then return a.rem > b.rem end
-    return a.unit < b.unit
-  end)
-  y = y - 4
-  local n = math.min(#mobs, MAX_ROWS)
-  for i = 1, n do
-    local m, r = mobs[i], row(i)
-    r:SetPoint("TOPLEFT", 8, y)
-    local label = m.tapped and ("|cff888888" .. m.name .. "|r") or m.name
-    if ns.Targeting.nextUnit == m.unit then label = "|cff40ff40>|r " .. label end
-    r.name:SetText(label)
-    r.bar:SetMinMaxValues(0, UnitHealthMax(m.unit))
-    r.bar:SetValue(UnitHealth(m.unit))
-    r.bar:SetStatusBarColor(m.tapped and 0.4 or 0.75, m.tapped and 0.4 or 0.2, m.tapped and 0.4 or 0.2)
-    Overlay.Update(r.bar, m.unit, s.enabled and m.rem or 0)
-    r:Show()
-    y = y - ROW_H
-  end
-  for i = n + 1, #rows do rows[i]:Hide() end
 
   frame:SetHeight(-y + 6)
   frame:Show()

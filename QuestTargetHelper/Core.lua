@@ -63,7 +63,8 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       ns.Quest.Invalidate()
       ns.Alerts.OnQuestLog()
     elseif event == "PLAYER_REGEN_DISABLED" then
-      ns.Targeting.EnterCombat(GetTime()) -- last moment the secure button may change
+      ns.Targeting.EnterCombat(GetTime()) -- last moment secure buttons may change
+      ns.Panel.EnterCombat(GetTime())
     elseif event == "ADDON_LOADED" and a1 == ADDON then
       QuestTargetHelperDB = QuestTargetHelperDB or {}
       QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
