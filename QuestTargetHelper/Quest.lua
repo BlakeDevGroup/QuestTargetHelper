@@ -27,9 +27,16 @@ end
 -- member's name (QuestPlayer) followed by *their* objectives.
 local LINE_PLAYER = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestPlayer) or 18
 
+-- Title as a plain key: no colour codes, trimmed, lower case.
+function Q.Key(title)
+  if type(title) ~= "string" then return "" end
+  return (title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("^%s+", ""):gsub("%s+$", ""):lower())
+end
+
 -- lines = { {type=, leftText=}, ... } as C_TooltipInfo returns them.
 -- isMine(title) -> false drops a quest that isn't in our own quest log.
-function Q.ParseTooltip(lines, mobName, isMine)
+-- playerName: a QuestPlayer line with our own name heads *our* progress.
+function Q.ParseTooltip(lines, mobName, isMine, playerName)
   local quests, current, theirs = {}, nil, false
   for _, l in ipairs(lines) do
     if l.type == LINE_TITLE and type(l.leftText) == "string" then
@@ -42,7 +49,9 @@ function Q.ParseTooltip(lines, mobName, isMine)
         quests[#quests + 1] = current
       end
     elseif l.type == LINE_PLAYER then
-      theirs = true -- what follows is a party member's progress, not ours
+      -- What follows is that player's progress: ours only under our own name.
+      theirs = not (playerName and Q.Key(l.leftText) == Q.Key(playerName))
+      if theirs and current then current.teammates = true end
     elseif l.type == LINE_OBJECTIVE and not theirs then
       local o = Q.ParseObjective(l.leftText, mobName)
       if o then
@@ -54,10 +63,11 @@ function Q.ParseTooltip(lines, mobName, isMine)
       end
     end
   end
-  -- Drop quests left without any objective of ours.
+  -- Drop a quest whose only progress lines were teammates'. A quest with no
+  -- countable objective at all still counts: it marks a quest mob.
   local out = {}
   for _, q in ipairs(quests) do
-    if #q.objectives > 0 then out[#out + 1] = q end
+    if #q.objectives > 0 or not q.teammates then out[#out + 1] = q end
   end
   return out
 end
@@ -75,8 +85,9 @@ local function addProgress(progress, title, text, have, need)
   local o = Q.ParseObjective(text)
   if not o then return end
   if type(have) == "number" and type(need) == "number" then o.have, o.need = have, need end
-  progress[title] = progress[title] or {}
-  progress[title][o.text] = { have = o.have, need = o.need }
+  local key = Q.Key(title)
+  progress[key] = progress[key] or {}
+  progress[key][o.text] = { have = o.have, need = o.need }
 end
 
 function Q.RefreshLog()
@@ -85,7 +96,7 @@ function Q.RefreshLog()
     for i = 1, C_QuestLog.GetNumQuestLogEntries() do
       local info = C_QuestLog.GetInfo(i)
       if info and not info.isHeader and type(info.title) == "string" then
-        titles[info.title], any = true, true
+        titles[Q.Key(info.title)], any = true, true
         local objs = info.questID and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(info.questID)
         for _, ob in ipairs(type(objs) == "table" and objs or {}) do
           addProgress(progress, info.title, ob.text, ob.numFulfilled, ob.numRequired)
@@ -96,7 +107,7 @@ function Q.RefreshLog()
     for i = 1, GetNumQuestLogEntries() do
       local title, _, _, isHeader = GetQuestLogTitle(i)
       if not isHeader and type(title) == "string" then
-        titles[title], any = true, true
+        titles[Q.Key(title)], any = true, true
         for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0) do
           addProgress(progress, title, (GetQuestLogLeaderBoard(j, i)))
         end
@@ -110,14 +121,16 @@ end
 
 -- have, need for an objective seen in a tooltip, preferring the quest log.
 function Q.Progress(title, o)
-  local p = Q.progress[title] and Q.progress[title][o.text]
+  local t = Q.progress[Q.Key(title)]
+  local p = t and t[o.text]
   if p then return p.have, p.need end
   return o.have, o.need
 end
 
 local function isMine(title)
-  return Q.myTitles == nil or Q.myTitles[title] == true
+  return Q.myTitles == nil or Q.myTitles[Q.Key(title)] == true
 end
+Q.IsMine = isMine
 
 -- Unfinished objectives this mob counts for (2+ = one kill, two objectives).
 function Q.OpenObjectives(entry)
@@ -158,7 +171,7 @@ function Q.ForUnit(unit, now)
         lines[i] = {}
       end
     end
-    quests = Q.ParseTooltip(lines, name, isMine)
+    quests = Q.ParseTooltip(lines, name, isMine, UnitName("player"))
   end
   e = { at = now, seen = now, name = plain(name) and name or "?", quests = quests, threat = threat }
   Q.cache[guid] = e

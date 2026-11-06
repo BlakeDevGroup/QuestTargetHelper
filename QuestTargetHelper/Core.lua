@@ -123,6 +123,29 @@ local function debugTarget()
   end
 end
 
+-- /qth quest: what the target's tooltip says and what we made of it.
+local function debugQuest()
+  local Q = ns.Quest
+  local tip = C_TooltipInfo and C_TooltipInfo.GetUnit("target")
+  if type(tip) ~= "table" or type(tip.lines) ~= "table" then say("no tooltip data for target") return end
+  local n = 0
+  for _ in pairs(Q.myTitles or {}) do n = n + 1 end
+  say("quest log titles read: " .. (Q.myTitles and n or "none (no filter)"))
+  for i, l in ipairs(tip.lines) do
+    say(string.format("line %d type=%s %s", i, ns.Describe(l.type), ns.Describe(l.leftText)))
+  end
+  Q.Invalidate()
+  local _, e = Q.ForUnit("target", GetTime())
+  if not e then say("target GUID unreadable") return end
+  if #e.quests == 0 then say("parsed: no quests of yours") end
+  for _, q in ipairs(e.quests) do
+    for _, o in ipairs(q.objectives) do
+      local have, need = Q.Progress(q.title, o)
+      say(string.format("parsed: %s / %s %d/%d", q.title, o.text, have, need))
+    end
+  end
+end
+
 SLASH_QUESTTARGETHELPER1 = "/qth"
 SlashCmdList.QUESTTARGETHELPER = function(msg)
   ns.SafeCall("slash", function()
@@ -138,6 +161,8 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
       ns.ShowFeedback()
     elseif cmd == "debug" then
       debugTarget()
+    elseif cmd == "quest" then
+      debugQuest()
     elseif cmd == "probe" and rest == "rec" then
       ns.settings.probeRec = not ns.settings.probeRec
       say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")

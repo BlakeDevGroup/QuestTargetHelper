@@ -64,6 +64,21 @@ quests = Q.ParseTooltip({
 eq("teammate-only quest dropped", #quests, 1)
 eq("our quest kept", quests[1].title, "The Zhevra")
 
+-- Grouped, our own progress is under a QuestPlayer line with our name.
+quests = Q.ParseTooltip({
+  { type = 17, leftText = "The Zhevra" },
+  { type = 18, leftText = "Me" },
+  { type = 8, leftText = "1/4 Zhevra Hooves" },
+  { type = 18, leftText = "Teammate" },
+  { type = 8, leftText = "3/4 Zhevra Hooves" },
+}, "Zhevra Runner", nil, "Me")
+eq("our named section kept", #quests, 1)
+eq("our named progress", quests[1].objectives[1].have, 1)
+eq("their named section skipped", #quests[1].objectives, 1)
+
+-- Titles match the log despite colour codes, case and spacing.
+eq("title key", Q.Key(" |cffffd100The Zhevra|r "), "the zhevra")
+
 -- Only a teammate's progress on a shared title: nothing of ours left.
 quests = Q.ParseTooltip({
   { type = 17, leftText = "The Zhevra" },
@@ -73,13 +88,13 @@ quests = Q.ParseTooltip({
 eq("quest with only their progress dropped", #quests, 0)
 
 -- Quest-log progress wins over a stale tooltip count, matched on the text.
-Q.progress = { ["The Zhevra"] = { ["Zhevra Hooves"] = { have = 3, need = 4 } } }
+Q.progress = { ["the zhevra"] = { ["Zhevra Hooves"] = { have = 3, need = 4 } } }
 local stale = Q.ParseObjective("1/4 Zhevra Hooves")
 local have, need = Q.Progress("The Zhevra", stale)
 eq("log have", have, 3); eq("log need", need, 4)
 have = Q.Progress("Other Quest", stale)
 eq("no log entry falls back to tooltip", have, 1)
-Q.progress = { ["The Zhevra"] = { ["Zhevra Hooves"] = { have = 4, need = 4 } } }
+Q.progress = { ["the zhevra"] = { ["Zhevra Hooves"] = { have = 4, need = 4 } } }
 eq("done in the log = not open", Q.OpenObjectives({ quests = {
   { title = "The Zhevra", objectives = { stale } } } }), 0)
 Q.progress = {}

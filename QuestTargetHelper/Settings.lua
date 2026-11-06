@@ -28,7 +28,7 @@ ns.DEFAULTS = {
   markSkull = true,   -- the keybind also puts a skull on the mob it targets
   nextMarker = true,  -- green outline on the next mob's nameplate
   doubleDip = true,   -- "x2" on mobs counting for 2+ objectives
-  alerts = true,      -- quest complete / nothing left here
+  alerts = true,      -- "Quest complete: <title>"
   alertSound = true,
   lootHint = true,    -- "Loot: press F" when the corpse in front of you has loot
   plateRange = 0,     -- nameplateMaxDistance in yards; 0 = leave the game's value
@@ -93,8 +93,8 @@ function ns.RegisterSettings()
   Checkbox("nextMarker", "Outline the next mob's nameplate",
     "Out of combat only: in combat the key targets by name, so there is no exact next mob to show.")
   Checkbox("doubleDip", "Show x2 on mobs that count for two objectives", nil)
-  Checkbox("alerts", "Announce completed quests and \"nothing left here\"", nil)
-  Checkbox("alertSound", "Play a sound with announcements", nil)
+  Checkbox("alerts", "Announce completed quests", nil)
+  Checkbox("alertSound", "Play a sound with the announcement", nil)
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "One-key looting", "Set up", function() ns.Loot.Setup() end,

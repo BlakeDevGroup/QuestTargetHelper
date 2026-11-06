@@ -1,12 +1,8 @@
--- "Quest complete" and "nothing left here" alerts, from the quest log.
+-- "Quest complete" alert, from the quest log.
 local _, ns = ...
-local Quest = ns.Quest
 
 local A = {}
 ns.Alerts = A
-
-local SEEN_FOR = 30   -- a quest mob seen this recently counts as "here"
-local SETTLE = 2.5    -- let tooltips be re-read after the log changes
 
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 
@@ -44,41 +40,19 @@ end
 
 local known      -- nil until the first scan, so logging in doesn't alert
 local announced = {} -- questID -> true: each quest is announced once per session
-local AREA_COOLDOWN = 60
-local lastArea = -AREA_COOLDOWN
 
 function A.OnQuestLog()
   if not ns.settings.alerts then known = completed() return end
   local now = completed()
   if known then
-    local any = false
     for id, title in pairs(now) do
       -- The log can flicker while it updates (complete -> not -> complete);
       -- announcing once per quest keeps that from repeating the warning.
       if not known[id] and not announced[id] then
         announced[id] = true
         announce("Quest complete: " .. title)
-        any = true
       end
     end
-    if any then C_Timer.After(SETTLE, function() ns.SafeCall("alerts", A.CheckAreaDone) end) end
   end
   known = now
-end
-
--- Nothing left here: no quest mob seen in the last SEEN_FOR seconds still
--- counts for an unfinished objective.
-function A.CheckAreaDone()
-  local t = GetTime()
-  local sawAny = false
-  for _, e in pairs(Quest.cache) do
-    if t - e.seen < SEEN_FOR then
-      sawAny = true
-      if Quest.OpenObjectives(e) > 0 then return end
-    end
-  end
-  if sawAny and t - lastArea > AREA_COOLDOWN then
-    lastArea = t
-    announce("Nothing left to kill here, go turn in")
-  end
 end

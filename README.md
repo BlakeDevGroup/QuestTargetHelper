@@ -28,7 +28,10 @@ Forever doesn't allow targeting or marking without a key press, so this is a key
 
 ## Markers and alerts
 - **x2** beside a nameplate: that mob counts for two unfinished objectives.
-- **Quest complete** and **"Nothing left to kill here, go turn in"** announcements, with a sound.
+- A **Quest complete** announcement, with a sound.
+
+## Looting
+Addons can't loot or interact for you; only Blizzard's Interact key can. `/qth loot` turns on soft interact and auto loot. Then the Interact key loots the corpse in front of you without targeting it, and a "Loot: press <key>" prompt shows when there's loot. Bind **Interact With Target** to a mouse button and looting is one click.
 
 ## Commands
 - `/qth`: settings (also under Options → AddOns)
