@@ -159,6 +159,7 @@ function ns.ProbeSnapshot(label)
   }) do
     snap.apis[api] = exists(api)
   end
+  snap.registered = ns.ProbeRegistered
   snap.secretsKeys = keys(C_Secrets)
   snap.curveKeys = keys(C_CurveUtil)
   snap.critShadow = D(Try(GetSpellCritChance, 6))
@@ -189,8 +190,10 @@ f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
 f:RegisterUnitEvent("UNIT_AURA", "target")
 f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+-- UNIT_COMBAT is fine on Forever (DoesItDie ships using it). Never register
+-- COMBAT_LOG_EVENT_UNFILTERED: Forever answers with ADDON_ACTION_FORBIDDEN,
+-- which pcall cannot catch (Details skips it on these clients too).
 local combatOk = pcall(f.RegisterUnitEvent, f, "UNIT_COMBAT", "target")
-local cleuOk = pcall(f.RegisterEvent, f, "COMBAT_LOG_EVENT_UNFILTERED")
 
 f:SetScript("OnEvent", function(_, event, ...)
   ns.SafeCall("probe:" .. event, function(...)
@@ -212,8 +215,6 @@ f:SetScript("OnEvent", function(_, event, ...)
       log(event, { full = type(info) == "table" and D(info.isFullUpdate) or D(info), added = added })
     elseif event == "UNIT_COMBAT" then
       log(event, { action = D(a2), flag = D(a3), amount = D(a4), school = D(a5) })
-    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-      log(event, { info = D(Try(function() return (CombatLogGetCurrentEventInfo()) end)) })
     elseif event == "NAME_PLATE_UNIT_ADDED" then
       local unit = a1
       local entry = { unit = D(unit), now = probePlate(unit) }
@@ -225,4 +226,4 @@ f:SetScript("OnEvent", function(_, event, ...)
   end, ...)
 end)
 
-db().registered = { UNIT_COMBAT = combatOk, COMBAT_LOG_EVENT_UNFILTERED = cleuOk }
+ns.ProbeRegistered = { UNIT_COMBAT = combatOk }
