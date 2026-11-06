@@ -73,39 +73,44 @@ function T.OnCastSucceeded(castGUID, spellID)
   if sent then pending[castGUID] = nil; pendingCount = pendingCount - 1 end
   local guid = (sent and sent.guid) or T.GuidFor("target")
   if not guid then return end
+  if T.Apply(guid, spellID, name, def, sent and sent.cp, true) then
+    lastApplied = { guid = guid, name = name, at = GetTime() }
+  end
+end
 
+-- Record a DoT on a mob, ours or a group member's. Keyed by spell name: a
+-- refresh, or a teammate's DoT of the same name, replaces it (as in game);
+-- different DoTs add up.
+function T.Apply(guid, spellID, name, def, cp, mine)
   local desc = C_Spell.GetSpellDescription(spellID)
   if not plain(desc) or desc == "" then
     C_Spell.RequestLoadSpellData(spellID)
-    return
+    return false
   end
-  local cp = sent and sent.cp
   local total, duration, tick = M.ParseDescription(desc, def.model, cp)
-  if not total or not duration or duration <= 0 then return end
-
-  local now = GetTime()
+  if not total or not duration or duration <= 0 then return false end
   local mob = T.byGuid[guid] or {}
   T.byGuid[guid] = mob
-  mob[name] = M.NewEntry(def, total, duration, tick, now) -- a refresh replaces it
-  lastApplied = { guid = guid, name = name, at = now }
+  local e = M.NewEntry(def, total, duration, tick, GetTime())
+  e.mine = mine
+  mob[name] = e
+  return true
 end
 
--- A group member finished a cast. If it's a DoT we also have on their target,
--- theirs replaced ours (one per mob on Forever): stop counting ours. If the two
--- did stack after all, the zone only undercounts, which stays safe.
+-- A group member finished a DoT on their target: it counts toward the kill
+-- zone too, on top of ours. Its damage is read from the spell's description
+-- with our own spell power (theirs is hidden), and finishers count as one
+-- combo point, so a teammate's DoT is never overestimated by much; for a
+-- non-caster's view it errs low. Same name as one of ours: it replaces ours.
 function T.OnGroupCast(unit, spellID)
   if not plain(spellID) then return end
   local me = UnitIsUnit(unit, "player")
   if not ns.Rules.IsGroupCaster(unit, plain(me) and me or nil) then return end
   local name = spellName(spellID)
-  if not plain(name) or not ns.Spells[name] then return end
+  local def = plain(name) and ns.Spells[name]
+  if not def then return end
   local guid = T.GuidFor(unit .. "target")
-  local mob = guid and T.byGuid[guid]
-  if not (mob and mob[name]) then return end
-  mob[name] = nil
-  local who = UnitName(unit)
-  print("|cff55ff55QTH|r " .. name .. " replaced by " .. (plain(who) and who or "a group member") ..
-    "'s, no longer counted as yours")
+  if guid then T.Apply(guid, spellID, name, def, nil, false) end
 end
 
 -- UNIT_COMBAT on the target: a miss/immune right after our cast means it never landed.
