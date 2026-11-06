@@ -55,7 +55,7 @@ Bugs or ideas: `/qth feedback` or [GitHub](https://github.com/BlakeDevGroup/Ques
 Tips: hide other UI clutter, keep the camera close, use a busy quest area, 1920x1080 or larger.
 
 ## Logo (project avatar, square, 400x400)
-`Media/logo.png`: a skull over a health bar, with red health ending inside the purple kill zone, before its white edge. It's an original drawing (not Blizzard's raid icon), readable at 64px. Rendered by Blender from `Media/logo.py`:
+`Media/logo.png`: a gold quest "!" over a health bar, with red health ending inside the purple kill zone, before its white edge. It's an original drawing (not Blizzard's quest icon), readable at 64px. Rendered by Blender from `Media/logo.py`:
 `blender -b --factory-startup -P Media/logo.py -- Media/logo.png 400`
 
 ## First release notes (v1.0.0)

@@ -63,15 +63,40 @@ EDGE = hexc("#ffffff")
 # Background tile
 rect("bg", 0, 0, 2.0, 2.0, BG, radius=0.28)
 
-# Skull (own drawing, not Blizzard's icon)
-SX, SY = 0, 0.30
-circle("head", SX, SY + 0.12, 0.44, BONE, sx=1.0, sy=0.95)
-rect("jaw", SX, SY - 0.28, 0.50, 0.30, BONE, radius=0.08)
-circle("eyeL", SX - 0.17, SY + 0.10, 0.125, BG, sy=1.1)
-circle("eyeR", SX + 0.17, SY + 0.10, 0.125, BG, sy=1.1)
-tri("nose", [(SX - 0.06, SY - 0.10), (SX + 0.06, SY - 0.10), (SX, SY + 0.01)], BG)
-for i, dx in enumerate((-0.12, 0.0, 0.12)):
-    rect("tooth%d" % i, SX + dx, SY - 0.33, 0.035, 0.16, BG)
+def quad(name, pts, color):
+    mesh = bpy.data.meshes.new(name)
+    z = layer()
+    mesh.from_pydata([(px, py, z) for px, py in pts], [], [(0, 1, 2, 3)])
+    o = bpy.data.objects.new(name, mesh)
+    scene.collection.objects.link(o)
+    o.color = color
+    return o
+
+GOLD = hexc("#ffd21f")
+GOLD_HI = hexc("#fff08a")
+OUTLINE = hexc("#3a2606")
+
+# Quest "!" (own drawing in the spirit of a quest marker, not Blizzard's art):
+# a bar that tapers toward the bottom, and a dot, gold with a dark outline.
+QX, QY = 0, 0.27            # centre of the mark
+TOP_W, BOT_W = 0.30, 0.17   # bar width at its top and bottom
+BAR_TOP, BAR_BOT = QY + 0.47, QY - 0.10
+DOT_Y, DOT_R = QY - 0.33, 0.115
+O = 0.045                   # outline thickness
+
+def bang(prefix, grow, color):
+    tw, bw = TOP_W / 2 + grow, BOT_W / 2 + grow
+    quad(prefix + "bar", [(QX - bw, BAR_BOT - grow), (QX + bw, BAR_BOT - grow),
+                          (QX + tw, BAR_TOP + grow), (QX - tw, BAR_TOP + grow)], color)
+    circle(prefix + "cap", QX, BAR_TOP + grow * 0.2, tw, color, sy=0.35)    # rounded top
+    circle(prefix + "foot", QX, BAR_BOT - grow * 0.2, bw, color, sy=0.6)    # rounded bottom
+    circle(prefix + "dot", QX, DOT_Y, DOT_R + grow, color)
+
+bang("outline_", O, OUTLINE)
+bang("fill_", 0.0, GOLD)
+# A soft highlight down the left of the bar.
+quad("shine", [(QX - BOT_W / 2 + 0.02, BAR_BOT + 0.06), (QX - BOT_W / 2 + 0.07, BAR_BOT + 0.06),
+               (QX - TOP_W / 2 + 0.10, BAR_TOP - 0.03), (QX - TOP_W / 2 + 0.04, BAR_TOP - 0.03)], GOLD_HI)
 
 # Health bar with the kill zone: health ends inside the zone = lethal.
 BX, BY, BW, BH = 0, -0.55, 1.56, 0.34
