@@ -94,13 +94,13 @@ local function buildClickers()
     local b = CreateFrame("Button", "QuestTargetHelperPanelRow" .. i, holder, "SecureActionButtonTemplate")
     b:SetPoint("TOPLEFT", holder, "TOPLEFT", PAD, -(i - 1) * ROW_H)
     b:SetSize(WIDTH - 2 * PAD, ROW_H)
-    -- Built-in secure actions, no macro parsing (the conditional parser misjudges
-    -- [@nameplateN] on Forever): left = TargetUnit(unit), the same call
-    -- Blizzard's own unit frames make; right = SetRaidTarget(unit, skull).
-    b:SetAttribute("type1", "target")
-    b:SetAttribute("type2", "raidtarget")
-    b:SetAttribute("marker2", 8)
-    b:SetAttribute("action2", "set") -- set, never toggle off
+    -- Macros with the token passed plainly, and NO "unit" attribute. Blizzard's
+    -- secure click code (SecureTemplates.lua) aborts any action whose button
+    -- has a unit that fails UnitExists(), and on Forever nameplate units fail
+    -- it; [@nameplateN] conditionals fail the same check. Plain
+    -- "/target nameplateN" goes straight to TargetUnit with no check.
+    -- Left = target, right = target + skull.
+    b:SetAttribute("type", "macro")
     -- Both: the secure template acts on down or up depending on the
     -- ActionButtonUseKeyDown setting and ignores the other.
     b:RegisterForClicks("AnyUp", "AnyDown")
@@ -206,7 +206,8 @@ local function assignSlots(mobs, visible)
     if unit ~= b.macro then
       b.macro = unit -- (field name kept for /qth dump)
       if unit then
-        b:SetAttribute("unit", unit)
+        b:SetAttribute("macrotext1", "/target " .. unit)
+        b:SetAttribute("macrotext2", "/target " .. unit .. "\n/tm !8") -- "!" = don't toggle off
         -- Plainly shown. A visibility driver like [@nameplateN,exists,nodead]
         -- evaluates false on Forever even for a live mob (unit existence is
         -- secret), which hid every click spot. A click on a slot whose mob is
@@ -261,7 +262,9 @@ local function drawRow(r, unit, now, s, clickable, snap)
   local label = (grey and ("|cff888888" .. name .. "|r"))
     or (questMob and name)
     or ("|cffff9040" .. name .. "|r") -- not a quest mob, but fighting us
-  if not clickable then label = label .. " |cff666666(no click)|r" end
+  -- Rows that showed up mid-fight can't be clicked until combat ends (the
+  -- click layer is frozen in combat): drawn faded rather than labelled.
+  r:SetAlpha(clickable and 1 or 0.5)
   if ns.Targeting.nextUnit == unit then label = "|cff40ff40>|r " .. label end
   r.name:SetText(label)
   local targeted = ns.Rules.IsTarget(guid, Tracker.GuidFor("target"))

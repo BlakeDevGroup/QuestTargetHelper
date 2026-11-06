@@ -43,7 +43,7 @@ A small panel lists the mobs that matter right now:
 - every mob fighting you, your pet or your group;
 - a mini health bar per mob, with its own kill zone and skull.
 
-**Click a mob to target it.** Mobs tagged by another player are greyed out. Your teammates' quests are left out.
+**Left-click a mob to target it, right-click to put a skull on it.** Your current target is highlighted in gold. Mobs tagged by another player are greyed out. In a group, only your own quests and counts are shown, never a teammate's.
 
 ### Next quest mob: one key
 Bind **Target next quest mob**. One press targets the best quest mob around you and puts a skull on it:
@@ -83,7 +83,8 @@ Found a bug or have an idea? Type `/qth feedback` in game, or open an issue on [
 Tips: hide other UI clutter, keep the camera close, use a busy quest area, 1920x1080 or larger.
 
 ## Logo (project avatar, square, 400x400)
-A raid skull over a short horizontal health bar with a purple band covering its left part. Readable at 64px. Same idea as the in-game skull.
+`Media/logo.png`: a skull over a health bar, with red health ending inside the purple kill zone, before its white edge. It's an original drawing (not Blizzard's raid icon), readable at 64px. Rendered by Blender from `Media/logo.py`:
+`blender -b --factory-startup -P Media/logo.py -- Media/logo.png 400`
 
 ## First release notes (v1.0.0)
 First public release for WoW Forever.

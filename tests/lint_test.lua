@@ -49,11 +49,14 @@ end
 -- every click spot hid itself.
 eq("no state drivers on click spots", offenders("RegisterStateDriver%("), "")
 
--- Bug: clicks reached the row but didn't target. /target [@nameplateN] goes
--- through the conditional parser, which misjudges nameplate units on Forever.
--- Rows use the built-in "target" action; macros pass the token plainly.
+-- Bug: clicks reached the row but didn't target, twice. Blizzard's secure
+-- click code aborts when the button's "unit" fails UnitExists(), which
+-- nameplate units do on Forever; [@nameplateN] conditionals fail the same
+-- way. Only plain "/target nameplateN" macros with no unit attribute work.
 eq("no [@nameplate...] conditionals built in code", offenders('%[@" %.%. '), "")
-eq("rows use the built-in target action", (source("Panel"):find('SetAttribute%("type1", "target"%)') ~= nil), true)
+eq("no unit attribute on click buttons", offenders('SetAttribute%("unit'), "")
+eq("rows target with a plain /target macro",
+  (source("Panel"):find('SetAttribute%("macrotext1", "/target " %.%. unit%)') ~= nil), true)
 
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
