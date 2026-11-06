@@ -70,9 +70,9 @@ function G.Refresh(now)
   if InCombatLockdown() then return end
   local best = G.Candidates(now)[1]
   G.nextUnit = best and best.unit or nil
-  -- Plain "/target nameplate7": Blizzard's /target passes the text straight to
-  -- TargetUnit, no conditional parsing (which misjudges [@nameplateN] here).
-  setMacro(best and ("/target " .. best.unit .. markLine()) or "")
+  -- By name: on Forever nameplate tokens can't be targeted (/target nameplate7
+  -- clears the target), so the key targets the best mob's name.
+  setMacro(best and best.name and best.name ~= "?" and ("/targetexact " .. best.name .. markLine()) or "")
 end
 
 -- Last chance before lockdown: switch to names, so presses keep working while

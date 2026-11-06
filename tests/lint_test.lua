@@ -55,8 +55,11 @@ eq("no state drivers on click spots", offenders("RegisterStateDriver%("), "")
 -- way. Only plain "/target nameplateN" macros with no unit attribute work.
 eq("no [@nameplate...] conditionals built in code", offenders('%[@" %.%. '), "")
 eq("no unit attribute on click buttons", offenders('SetAttribute%("unit'), "")
-eq("rows target with a plain /target macro",
-  (source("Panel"):find('SetAttribute%("macrotext1", "/target " %.%. unit%)') ~= nil), true)
+-- Then: "/target nameplate1" ran but cleared the target. Nameplate tokens
+-- can't be targeted at all on Forever; only names can.
+eq("never target a nameplate token", offenders('"/target " %.%. [%w%.]*unit'), "")
+eq("rows target by name", (source("Panel"):find('"/targetexact " %.%. name') ~= nil), true)
+eq("keybind targets by name", (source("Targeting"):find('"/targetexact " %.%. best%.name') ~= nil), true)
 
 -- Bug: only the name part of a row took clicks; the kill-zone frames over the
 -- bar were in the way. Display frames ignore the mouse, the click layer is HIGH.

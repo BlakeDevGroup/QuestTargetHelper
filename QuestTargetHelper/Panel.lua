@@ -219,11 +219,17 @@ local function assignSlots(mobs, visible)
   place() -- the click layer sits under the objectives, anchored to UIParent
   for i, b in ipairs(clickers) do
     local unit = visible and slots[i] or nil
-    if unit ~= b.macro then
-      b.macro = unit -- (field name kept for /qth dump)
-      if unit then
-        b:SetAttribute("macrotext1", "/target " .. unit)
-        b:SetAttribute("macrotext2", "/target " .. unit .. "\n/tm !8") -- "!" = don't toggle off
+    -- Target by name: on Forever nameplate tokens can't be targeted at all
+    -- (/target nameplate1 clears the target, seen in play). /targetexact by
+    -- name works; with several same-name mobs the game picks which.
+    local name = unit and UnitName(unit)
+    if name ~= nil and ns.IsSecret(name) then name = nil end
+    local key = name and (unit .. "|" .. name) or nil
+    if key ~= b.key then
+      b.key, b.macro = key, unit -- (macro field kept for /qth dump)
+      if name then
+        b:SetAttribute("macrotext1", "/targetexact " .. name)
+        b:SetAttribute("macrotext2", "/targetexact " .. name .. "\n/tm !8") -- "!" = don't toggle off
         -- Plainly shown. A visibility driver like [@nameplateN,exists,nodead]
         -- evaluates false on Forever even for a live mob (unit existence is
         -- secret), which hid every click spot. A click on a slot whose mob is
