@@ -45,6 +45,14 @@ Addons can't loot or interact for you; only Blizzard's Interact key can. `/qth l
 ## How it works on Forever
 Forever hides mob health, aura data and damage numbers from addons in combat. Addon code can't compare "DoT damage left" with "health left". A health bar can, though: the kill zone is a bar scaled to the mob's max health, so the game draws the comparison and the addon never reads health. Details are in [Docs/ProbeFindings.md](Docs/ProbeFindings.md).
 
+## Development
+Every decision (quest mob, fighting your side, rows, next mob, cast target, quest-complete alerts) lives in `QuestTargetHelper/Rules.lua`. These are pure functions over plain "snapshots", which `Snapshot.lua` builds from the game; anything Forever hides becomes `nil`, never a guess. Every bug found in play gets a regression test in `tests/rules_test.lua`.
+
+```
+lua tests/run_all.lua
+```
+CI runs the same on every push, with Lua 5.1 like WoW.
+
 ## Credits
 The clipped skull bar is an idea from [Does It Die](https://www.curseforge.com/wow/addons/does-it-die) by Joe Greive (MIT).
 

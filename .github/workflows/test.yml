@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # WoW runs Lua 5.1, so the tests do too.
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+      - name: Syntax check
+        run: for f in QuestTargetHelper/*.lua; do luac -p "$f" || exit 1; done
+      - name: Unit and regression tests
+        run: lua tests/run_all.lua

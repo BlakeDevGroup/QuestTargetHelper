@@ -9,11 +9,13 @@
 
 Safe.lua
 Math.lua
+Rules.lua
 Spells.lua
 Tracker.lua
 Overlay.lua
 Frames.lua
 Quest.lua
+Snapshot.lua
 Targeting.lua
 Markers.lua
 Alerts.lua

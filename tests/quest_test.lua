@@ -1,13 +1,10 @@
--- Run from the repo root: lua tests/quest_test.lua
-local Q = dofile("QuestTargetHelper/Quest.lua")
-
-local failures = 0
-local function eq(name, got, want)
-  if got ~= want then
-    failures = failures + 1
-    print("FAIL " .. name .. ": got " .. tostring(got) .. ", want " .. tostring(want))
-  end
-end
+-- Run from the repo root: lua tests/run_all.lua (or lua tests/quest_test.lua)
+package.path = "tests/?.lua;" .. package.path
+local H = require("harness")
+local ns = H.addon({ "Rules", "Quest" })
+local Q = ns.Quest
+local T = H.suite("quest")
+local eq = T.eq
 
 -- Lines as Forever's unit tooltip gave them (probe report 2).
 local o = Q.ParseObjective("0/4 Zhevra Hooves", "Zhevra Runner")
@@ -101,4 +98,4 @@ Q.progress = {}
 
 eq("no quest lines", #Q.ParseTooltip({ { type = 2, leftText = "Wolf" } }, "Wolf"), 0)
 
-if failures == 0 then print("all quest tests passed") else print(failures .. " failure(s)") os.exit(1) end
+return T.done()

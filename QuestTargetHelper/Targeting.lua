@@ -59,33 +59,10 @@ local function markLine()
   return ns.settings.markSkull and "\n/tm !8" or "" -- "!" = don't toggle the skull off (Forever)
 end
 
--- Quest mobs on nameplates worth pulling next: attackable, alive, not tagged by
--- someone else, not already carrying our DoTs, not our current target, with at
--- least one unfinished objective. Best first: most open objectives (double
--- dips), then lowest on screen (roughly nearest).
+-- Quest mobs worth pulling next, best first (rule in Rules.NextCandidates).
 function G.Candidates(now)
-  local list = {}
-  local targetGuid = Tracker.GuidFor("target")
-  for unit in pairs(Frames.plates) do
-    if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit))
-        and not (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit))) then
-      local guid, e = Quest.ForUnit(unit, now)
-      if guid and guid ~= targetGuid and Tracker.Remaining(guid, now) == 0 then
-        local open = Quest.OpenObjectives(e)
-        if open > 0 then
-          local plate = C_NamePlate.GetNamePlateForUnit(unit)
-          local y = plate and plate:GetBottom()
-          list[#list + 1] = { unit = unit, guid = guid, name = e.name, open = open,
-            y = plain(y) and y or 0 }
-        end
-      end
-    end
-  end
-  table.sort(list, function(a, b)
-    if a.open ~= b.open then return a.open > b.open end
-    return a.y < b.y
-  end)
-  return list
+  local snaps, ctx = ns.Snapshot.All(now)
+  return ns.Rules.NextCandidates(snaps, ctx, Quest.Progress)
 end
 
 -- Out of combat: aim the button at the best plate.

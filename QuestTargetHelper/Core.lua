@@ -6,7 +6,7 @@ local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts and ns.Loot) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts and ns.Loot and ns.Rules and ns.Snapshot) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
@@ -138,7 +138,17 @@ local function debugQuest()
   local _, e = Q.ForUnit("target", GetTime())
   if not e then say("target GUID unreadable") return end
   if #e.quests == 0 then say("parsed: no quests of yours") end
-  say("counts as a quest mob: " .. tostring(Q.IsQuestMob("target", e)))
+  -- Every signal the rules decide on, "nil" where the game hid it.
+  local side = ns.Snapshot.Side()
+  local snap, ctx = ns.Snapshot.ForUnit("target", GetTime(), side), ns.Snapshot.Context(side)
+  if snap then
+    say(string.format("signals: attackable=%s dead=%s tapDenied=%s inCombat=%s threatStatus=%s targetsSide=%s threatLine=%s dots=%d related=%s sideInCombat=%s",
+      tostring(snap.attackable), tostring(snap.dead), tostring(snap.tapDenied), tostring(snap.inCombat),
+      tostring(snap.threatStatus), tostring(snap.targetsSide), tostring(e.threat), snap.rem or 0,
+      tostring(snap.related), tostring(ctx.sideInCombat)))
+    say("quest mob: " .. tostring(ns.Rules.IsQuestMob(snap, Q.Progress)) ..
+      ", fighting your side: " .. tostring(ns.Rules.Fighting(snap, ctx)))
+  end
   for _, q in ipairs(e.quests) do
     for _, o in ipairs(q.objectives) do
       local have, need = Q.Progress(q.title, o)

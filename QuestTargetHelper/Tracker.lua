@@ -33,20 +33,21 @@ end
 -- hard target when several mobs share it.
 local CANDIDATES = { "target", "softenemy", "mouseover", "focus" }
 
+-- Plain facts about the candidate units, in preference order; the choice
+-- itself is Rules.CastUnit (unit tested).
 local function unitNamed(name)
-  local function matches(unit)
-    local n = UnitName(unit)
-    if not plain(n) or n ~= name then return false end
-    local hostile = UnitCanAttack("player", unit)
-    return plain(hostile) and hostile == true
+  local list = {}
+  local function add(unit)
+    local n, hostile = UnitName(unit), UnitCanAttack("player", unit)
+    list[#list + 1] = { unit = unit, name = plain(n) and n or nil,
+      hostile = plain(hostile) and hostile == true }
   end
-  for _, unit in ipairs(CANDIDATES) do
-    if matches(unit) then return unit end
-  end
-  for unit in pairs(ns.Frames.plates) do
-    if matches(unit) then return unit end
-  end
-  return nil
+  for _, unit in ipairs(CANDIDATES) do add(unit) end
+  local plates = {}
+  for unit in pairs(ns.Frames.plates) do plates[#plates + 1] = unit end
+  table.sort(plates)
+  for _, unit in ipairs(plates) do add(unit) end
+  return ns.Rules.CastUnit(name, list)
 end
 
 local pending = {}  -- castGUID -> { guid, cp } captured when the cast started

@@ -132,36 +132,13 @@ local function isMine(title)
 end
 Q.IsMine = isMine
 
--- Unfinished objectives this mob counts for (2+ = one kill, two objectives).
+-- Unfinished objectives this mob counts for, counts from the quest log.
 function Q.OpenObjectives(entry)
-  local n = 0
-  for _, q in ipairs(entry.quests) do
-    for _, o in ipairs(q.objectives) do
-      local have, need = Q.Progress(q.title, o)
-      if have < need then n = n + 1 end
-    end
-  end
-  return n
+  return ns.Rules.OpenObjectives(entry, Q.Progress)
 end
 
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 
--- Does this mob still matter for our quests? An unfinished objective (counts
--- from the quest log), or, when its tooltip names a quest without any countable
--- objective, the game's own "related to an active quest" check. A mob whose
--- objectives we've finished still lists the quest in its tooltip; it isn't one.
-function Q.IsQuestMob(unit, entry)
-  if not entry then return false end
-  if Q.OpenObjectives(entry) > 0 then return true end
-  for _, q in ipairs(entry.quests) do
-    if #q.objectives == 0 then
-      local related = C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest
-        and C_QuestLog.UnitIsRelatedToActiveQuest(unit)
-      return plain(related) and related == true
-    end
-  end
-  return false
-end
 
 -- Quest info for the mob behind `unit`, cached per GUID. Returns guid, entry
 -- (entry.quests is empty for mobs that count for nothing).

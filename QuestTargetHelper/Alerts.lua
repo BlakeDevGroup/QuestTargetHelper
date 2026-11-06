@@ -44,15 +44,8 @@ local announced = {} -- questID -> true: each quest is announced once per sessio
 function A.OnQuestLog()
   if not ns.settings.alerts then known = completed() return end
   local now = completed()
-  if known then
-    for id, title in pairs(now) do
-      -- The log can flicker while it updates (complete -> not -> complete);
-      -- announcing once per quest keeps that from repeating the warning.
-      if not known[id] and not announced[id] then
-        announced[id] = true
-        announce("Quest complete: " .. title)
-      end
-    end
+  for _, title in ipairs(ns.Rules.NewlyCompleted(known, now, announced)) do
+    announce("Quest complete: " .. title)
   end
   known = now
 end

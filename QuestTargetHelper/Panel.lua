@@ -127,91 +127,14 @@ local function shouldShow(mode, any)
   return false
 end
 
--- Us, our pet, and our group with their pets: the side a mob can be fighting.
-local function ourSide()
-  local units = { "player", "pet" }
-  if IsInRaid and IsInRaid() then
-    for i = 1, GetNumGroupMembers() do
-      units[#units + 1] = "raid" .. i
-      units[#units + 1] = "raidpet" .. i
-    end
-  elseif IsInGroup and IsInGroup() then
-    for i = 1, 4 do
-      units[#units + 1] = "party" .. i
-      units[#units + 1] = "partypet" .. i
-    end
-  end
-  return units
-end
-
--- Is this mob in combat with us, our pet or our group (not some stranger)?
--- Our DoTs on it, our threat share above 0 (tooltip, plain in combat), it is
--- attacking one of us (threat status 2-3), or it has one of us targeted.
--- Status 0-1 alone isn't trusted: it can read 0 for mobs we never touched.
-local function fighting(unit, e, rem, side)
-  if rem > 0 or (e and e.threat) then return true end
-  local mobTarget = unit .. "target"
-  for _, u in ipairs(side) do
-    local status = UnitThreatSituation and UnitThreatSituation(u, unit)
-    if plain(status) and status >= 2 then return true end
-    if isTrue(UnitIsUnit(mobTarget, u)) then return true end
-  end
-  return false
-end
-
--- Mobs for rows: every mob fighting us, plus quest mobs. Fighting first, then
--- most DoT damage still coming, then the rest.
+-- Rows and objectives come from Rules (pure, unit tested) over Snapshot data.
 local function nearbyMobs(now)
-  local mobs, side = {}, ourSide()
-  for unit in pairs(Frames.plates) do
-    if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit)) then
-      local guid, e = Quest.ForUnit(unit, now)
-      if guid then
-        local rem = Tracker.Remaining(guid, now)
-        local fight = fighting(unit, e, rem, side)
-        if fight or Quest.IsQuestMob(unit, e) then
-          mobs[#mobs + 1] = { unit = unit, rem = rem, fight = fight }
-        end
-      end
-    end
-  end
-  table.sort(mobs, function(a, b)
-    if a.fight ~= b.fight then return a.fight end
-    if a.rem ~= b.rem then return a.rem > b.rem end
-    return a.unit < b.unit
-  end)
-  return mobs
+  local snaps, ctx = ns.Snapshot.All(now)
+  return ns.Rules.Rows(snaps, ctx, Quest.Progress), snaps
 end
 
--- Unfinished objectives of the quest mobs on screen, in first-seen order.
-local function nearbyObjectives(now)
-  local objectives, order = {}, {}
-  for unit in pairs(Frames.plates) do
-    if isTrue(UnitCanAttack("player", unit)) then
-      local guid, e = Quest.ForUnit(unit, now)
-      if guid then
-        for _, q in ipairs(e.quests) do
-          for _, o in ipairs(q.objectives) do
-            local key = q.title .. "\n" .. o.text
-            local have, need = Quest.Progress(q.title, o) -- quest log first: updates on loot at once
-            local obj = objectives[key]
-            if not obj then
-              objectives[key] = { title = q.title, text = o.text, have = have, need = need }
-              order[#order + 1] = key
-            elseif have > obj.have then
-              obj.have = have
-            end
-          end
-        end
-      end
-    end
-  end
-  local shown = {}
-  for _, key in ipairs(order) do
-    local o = objectives[key]
-    if o.have < o.need then shown[#shown + 1] = o end
-  end
-  return shown
+local function nearbyObjectives(snaps)
+  return ns.Rules.Objectives(snaps, Quest.Progress)
 end
 
 -- Objective text lines, quest titles in gold.
@@ -259,13 +182,14 @@ end
 -- layout, and make rows clickable even in "In combat" mode (hidden until now).
 function P.EnterCombat(now)
   if not frame or ns.settings.panelMode == 1 then return end
-  local text = objectiveLines(nearbyObjectives(now))
+  local mobs, snaps = nearbyMobs(now)
+  local text = objectiveLines(nearbyObjectives(snaps))
   objHeight = PAD + #text * LINE_H + (#text > 0 and 4 or 0)
-  assignSlots(nearbyMobs(now), true)
+  assignSlots(mobs, true)
 end
 
 -- One row for the mob behind `unit` right now (the token may have moved on).
-local function drawRow(r, unit, now, s, clickable)
+local function drawRow(r, unit, now, s, clickable, snap)
   local guid = Tracker.GuidFor(unit)
   local name = nil
   if Frames.plates[unit] ~= nil then name = UnitName(unit) end
@@ -274,7 +198,7 @@ local function drawRow(r, unit, now, s, clickable)
     return false
   end
   local grey = isTrue(UnitIsDead(unit)) or (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit)))
-  local questMob = Quest.IsQuestMob(unit, Quest.cache[guid])
+  local questMob = snap ~= nil and ns.Rules.IsQuestMob(snap, Quest.Progress)
   local label = (grey and ("|cff888888" .. name .. "|r"))
     or (questMob and name)
     or ("|cffff9040" .. name .. "|r") -- not a quest mob, but fighting us
@@ -299,8 +223,10 @@ function P.Refresh(now)
   local combat = InCombatLockdown()
   if not combat then frame:EnableMouse(not s.panelLocked) end
 
-  local text = objectiveLines(nearbyObjectives(now))
-  local mobs = nearbyMobs(now)
+  local mobs, snaps = nearbyMobs(now)
+  local text = objectiveLines(nearbyObjectives(snaps))
+  local snapOf = {}
+  for _, sn in ipairs(snaps) do snapOf[sn.unit] = sn end
 
   -- Visibility. In combat the click layer can't be hidden, so while it is up
   -- the panel stays up too (otherwise clicks would land on an invisible row).
@@ -336,7 +262,7 @@ function P.Refresh(now)
     local r = row(i)
     r:ClearAllPoints()
     r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (i - 1) * ROW_H)
-    if drawRow(r, slots[i], now, s, true) then lastShown = i end
+    if drawRow(r, slots[i], now, s, true, snapOf[slots[i]]) then lastShown = i end
   end
   if combat then
     local inSlots = {}
@@ -348,7 +274,7 @@ function P.Refresh(now)
         local r = row(n)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (n - 1) * ROW_H)
-        if drawRow(r, m.unit, now, s, false) then lastShown = n end
+        if drawRow(r, m.unit, now, s, false, snapOf[m.unit]) then lastShown = n end
       end
     end
   end

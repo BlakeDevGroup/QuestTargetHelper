@@ -1,14 +1,9 @@
--- Run from the repo root: lua tests/math_test.lua
-local M = dofile("QuestTargetHelper/Math.lua")
-
-local failures = 0
-local function eq(name, got, want)
-  local ok = (type(want) == "number" and type(got) == "number") and math.abs(got - want) < 1e-6 or got == want
-  if not ok then
-    failures = failures + 1
-    print("FAIL " .. name .. ": got " .. tostring(got) .. ", want " .. tostring(want))
-  end
-end
+-- Run from the repo root: lua tests/run_all.lua (or lua tests/math_test.lua)
+package.path = "tests/?.lua;" .. package.path
+local H = require("harness")
+local M = H.addon({ "Math" }).Math
+local T = H.suite("math")
+local eq = T.eq
 
 -- Descriptions copied from the Forever client (probe report 1).
 local t, d, tick = M.ParseDescription("Corrupts the target, causing 103 Shadow damage over 15 sec.")
@@ -55,4 +50,4 @@ eq("agony after first third", M.Remaining(e, 8), 120 - 4 * 5)
 eq("agony after two thirds", M.Remaining(e, 16), 4 * 15)
 eq("agony last tick", M.Remaining(e, 22), 15)
 
-if failures == 0 then print("all math tests passed") else print(failures .. " failure(s)") os.exit(1) end
+return T.done()
