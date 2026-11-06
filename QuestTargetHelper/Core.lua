@@ -138,6 +138,7 @@ local function debugQuest()
   local _, e = Q.ForUnit("target", GetTime())
   if not e then say("target GUID unreadable") return end
   if #e.quests == 0 then say("parsed: no quests of yours") end
+  say("counts as a quest mob: " .. tostring(Q.IsQuestMob("target", e)))
   for _, q in ipairs(e.quests) do
     for _, o in ipairs(q.objectives) do
       local have, need = Q.Progress(q.title, o)

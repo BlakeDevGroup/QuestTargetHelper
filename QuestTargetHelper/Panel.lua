@@ -169,7 +169,7 @@ local function nearbyMobs(now)
       if guid then
         local rem = Tracker.Remaining(guid, now)
         local fight = fighting(unit, e, rem, side)
-        if fight or #e.quests > 0 then
+        if fight or Quest.IsQuestMob(unit, e) then
           mobs[#mobs + 1] = { unit = unit, rem = rem, fight = fight }
         end
       end
@@ -274,8 +274,7 @@ local function drawRow(r, unit, now, s, clickable)
     return false
   end
   local grey = isTrue(UnitIsDead(unit)) or (UnitIsTapDenied and isTrue(UnitIsTapDenied(unit)))
-  local e = Quest.cache[guid]
-  local questMob = e and #e.quests > 0
+  local questMob = Quest.IsQuestMob(unit, Quest.cache[guid])
   local label = (grey and ("|cff888888" .. name .. "|r"))
     or (questMob and name)
     or ("|cffff9040" .. name .. "|r") -- not a quest mob, but fighting us
