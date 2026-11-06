@@ -157,6 +157,50 @@ local function debugQuest()
   end
 end
 
+-- /qth dump: everything the rules see about every nameplate, saved for reading
+-- outside the game (written on /reload). Includes plates we aren't tracking.
+local function dump()
+  local now = GetTime()
+  local snaps, ctx = ns.Snapshot.All(now)
+  local d = { at = date("%H:%M:%S"), inCombat = InCombatLockdown(), sideInCombat = ctx.sideInCombat,
+    logTitles = 0, plates = {}, untracked = {} }
+  for _ in pairs(ns.Quest.myTitles or {}) do d.logTitles = d.logTitles + 1 end
+  for _, s in ipairs(snaps) do
+    local lines = {}
+    local tip = C_TooltipInfo and C_TooltipInfo.GetUnit(s.unit)
+    for i, l in ipairs(type(tip) == "table" and type(tip.lines) == "table" and tip.lines or {}) do
+      lines[i] = ns.Describe(l.type) .. " | " .. ns.Describe(l.leftText)
+    end
+    local quests = {}
+    for _, q in ipairs(s.entry.quests) do
+      for _, o in ipairs(q.objectives) do
+        local have, need = ns.Quest.Progress(q.title, o)
+        quests[#quests + 1] = q.title .. " / " .. o.text .. " " .. have .. "/" .. need
+      end
+      if #q.objectives == 0 then quests[#quests + 1] = q.title .. " (no objective lines)" end
+    end
+    d.plates[#d.plates + 1] = {
+      unit = s.unit, name = s.name, tooltip = lines, quests = quests,
+      attackable = tostring(s.attackable), dead = tostring(s.dead), tapDenied = tostring(s.tapDenied),
+      inCombat = tostring(s.inCombat), threatStatus = tostring(s.threatStatus),
+      targetsSide = tostring(s.targetsSide), threatLine = tostring(s.entry.threat),
+      dots = s.rem or 0, related = tostring(s.related),
+      questMob = ns.Rules.IsQuestMob(s, ns.Quest.Progress), fighting = ns.Rules.Fighting(s, ctx),
+    }
+  end
+  -- Plates the game has that never reached our list (NAME_PLATE_UNIT_ADDED missed?).
+  for i = 1, 40 do
+    local unit = "nameplate" .. i
+    if C_NamePlate.GetNamePlateForUnit(unit) and ns.Frames.plates[unit] == nil then
+      d.untracked[#d.untracked + 1] = unit .. " " .. ns.Describe(UnitName(unit))
+    end
+  end
+  QuestTargetHelperDB.dumps = QuestTargetHelperDB.dumps or {}
+  table.insert(QuestTargetHelperDB.dumps, d)
+  while #QuestTargetHelperDB.dumps > 10 do table.remove(QuestTargetHelperDB.dumps, 1) end
+  say(string.format("dumped %d nameplates (%d untracked). /reload to save it.", #d.plates, #d.untracked))
+end
+
 SLASH_QUESTTARGETHELPER1 = "/qth"
 SlashCmdList.QUESTTARGETHELPER = function(msg)
   ns.SafeCall("slash", function()
@@ -174,6 +218,8 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
       debugTarget()
     elseif cmd == "quest" then
       debugQuest()
+    elseif cmd == "dump" then
+      dump()
     elseif cmd == "probe" and rest == "rec" then
       ns.settings.probeRec = not ns.settings.probeRec
       say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
