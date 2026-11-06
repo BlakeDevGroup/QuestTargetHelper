@@ -49,6 +49,12 @@ end
 -- every click spot hid itself.
 eq("no state drivers on click spots", offenders("RegisterStateDriver%("), "")
 
+-- Bug: clicks reached the row but didn't target. /target [@nameplateN] goes
+-- through the conditional parser, which misjudges nameplate units on Forever.
+-- Rows use the built-in "target" action; macros pass the token plainly.
+eq("no [@nameplate...] conditionals built in code", offenders('%[@" %.%. '), "")
+eq("rows use the built-in target action", (source("Panel"):find('SetAttribute%("type1", "target"%)') ~= nil), true)
+
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
 

@@ -94,8 +94,13 @@ local function buildClickers()
     local b = CreateFrame("Button", "QuestTargetHelperPanelRow" .. i, holder, "SecureActionButtonTemplate")
     b:SetPoint("TOPLEFT", holder, "TOPLEFT", PAD, -(i - 1) * ROW_H)
     b:SetSize(WIDTH - 2 * PAD, ROW_H)
-    b:SetAttribute("type", "macro")
-    b:SetAttribute("macrotext", "")
+    -- Built-in secure actions, no macro parsing (the conditional parser misjudges
+    -- [@nameplateN] on Forever): left = TargetUnit(unit), the same call
+    -- Blizzard's own unit frames make; right = SetRaidTarget(unit, skull).
+    b:SetAttribute("type1", "target")
+    b:SetAttribute("type2", "raidtarget")
+    b:SetAttribute("marker2", 8)
+    b:SetAttribute("action2", "set") -- set, never toggle off
     -- Both: the secure template acts on down or up depending on the
     -- ActionButtonUseKeyDown setting and ignores the other.
     b:RegisterForClicks("AnyUp", "AnyDown")
@@ -196,15 +201,12 @@ local function assignSlots(mobs, visible)
   for i = 1, math.min(#mobs, CLICK_ROWS) do slots[i] = mobs[i].unit end
   if not clickers then return end
   place() -- the click layer sits under the objectives, anchored to UIParent
-  local mark = ns.settings.markSkull and "\n/tm !8" or ""
   for i, b in ipairs(clickers) do
     local unit = visible and slots[i] or nil
-    -- "[@unit]": always a unit token, never read as a mob named "nameplate3".
-    local macro = unit and ("/target [@" .. unit .. "]" .. mark) or nil
-    if macro ~= b.macro then
-      b.macro = macro
-      if macro then
-        b:SetAttribute("macrotext", macro)
+    if unit ~= b.macro then
+      b.macro = unit -- (field name kept for /qth dump)
+      if unit then
+        b:SetAttribute("unit", unit)
         -- Plainly shown. A visibility driver like [@nameplateN,exists,nodead]
         -- evaluates false on Forever even for a live mob (unit existence is
         -- secret), which hid every click spot. A click on a slot whose mob is

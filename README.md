@@ -11,7 +11,7 @@ Your DoTs are marked on the health bar of every mob you've dotted: on nameplates
 - Classes: Warlock, Priest, Druid, Hunter, Mage, Rogue, Shaman, Warrior.
 
 ## Pull tracker
-A small panel lists the quest mobs around you, each with a mini health bar, its kill zone and skull, greyed if another player tagged it. **Click a mob to target it** (and skull it, if that setting is on). Below them are the objectives those mobs count for.
+A small panel lists the quest mobs around you, each with a mini health bar, its kill zone and skull, greyed if another player tagged it. **Left-click a mob to target it, right-click to skull it.** Your current target's row is highlighted in gold. Below them are the objectives those mobs count for.
 
 In combat the row order holds still, because the game won't let clickable buttons move mid-fight. The rows themselves keep updating.
 

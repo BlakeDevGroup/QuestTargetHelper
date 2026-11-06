@@ -80,7 +80,7 @@ function ns.RegisterSettings()
     "How far away nameplates appear, and with them the mobs the pull tracker and keybind can see. The game caps it; the value it accepts is printed in chat. Plater has its own setting for this, which this overrides after login.")
   Slider("panelMode", "Pull tracker panel", 1, #ns.PANEL_MODES, 1,
     function(v) return ns.PANEL_MODES[v] or "?" end,
-    "Nearby quest mobs with their kill zones (click one to target it) and the objectives they count for.")
+    "Nearby quest mobs and mobs fighting your side, with their kill zones and the objectives they count for. Left-click a mob to target it, right-click to put a skull on it.")
   Checkbox("panelLocked", "Lock the pull tracker",
     "Unlocked, drag it by the objectives to move it. Locked, clicks outside the mob rows go through it.")
 
