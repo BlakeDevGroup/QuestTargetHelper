@@ -14,8 +14,20 @@ Build 1.60.1.70790, Interface 16001, WOW_PROJECT_ID 18. Warlock level 18, open w
 - Nameplates are ready during `NAME_PLATE_UNIT_ADDED` (no delay needed). The user runs Plater: `plate.UnitFrame.healthBar` is Blizzard's bar, `plate.unitFrame` is Plater's. Plater caches `namePlateUnitGUID`, `namePlateNpcId`, `namePlateUnitName` and `namePlateIsQuestObjective` on the plate.
 - `C_Secrets` has predicates per category (`ShouldUnitIdentityBeSecret`, `ShouldUnitHealthMaxBeSecret`, `ShouldAurasBeSecret`, …), so we can check before reading.
 
-## Still open (report 2: automatic in-combat snapshots)
-- Are GUIDs and names secret in combat? Are our debuffs readable in combat?
-- Does `UNIT_COMBAT` fire with plain amounts?
-- Does tooltip quest-objective data or `UnitIsRelatedToActiveQuest` work?
-- Are Plater's cached fields plain?
+## Report 2 (2026-11-05): automatic in-combat snapshots, Zhevra Runners (quest mobs)
+- `HasSecretRestrictions` and `ShouldAurasBeSecret` are both true in combat.
+- `UnitGUID` and `UnitName` are **plain in combat** (`ShouldUnitIdentityBeSecret` = false), on the target and on nameplates.
+- `UnitCanAttack` is plain. `UnitHealthMax` is secret (`ShouldUnitHealthMaxBeSecret` = true).
+- **Auras are unreadable in combat**: "Auras cannot be accessed when secret while tainted". `UNIT_AURA`'s `isFullUpdate` is itself secret.
+- **`UNIT_COMBAT` amounts are secret.** `action` (WOUND, …), `flag` (CRITICAL) and `school` stay plain. No addon can learn tick sizes, which is why DoesItDie's estimates stay wrong.
+- DoT ticks can crit.
+- `GetSpellBonusDamage` is **secret in combat** (it was 29 out of combat).
+- `C_Spell.GetSpellDescription` stays plain in combat, with the same text as out of combat.
+- Quest detection works in combat:
+  - `C_QuestLog.UnitIsRelatedToActiveQuest(unit)` = true.
+  - `C_TooltipInfo.GetUnit` lines are plain: type 17 = quest title ("The Zhevra"), type 8 = objective ("0/4 Zhevra Hooves").
+  - Plater's `namePlateIsQuestObjective` = true and `namePlateNpcId` = 3242 are plain.
+- With Plater, Blizzard's `plate.UnitFrame` is hidden and Plater's `plate.unitFrame` is the one shown.
+
+## Open
+- Do description numbers include spell power? Check by swapping a +spell damage item out of combat and re-reading the description.

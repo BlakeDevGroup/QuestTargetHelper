@@ -224,14 +224,22 @@ local function auto(label, delay)
   end)
 end
 
--- Event recorders: these run all session so casts and plate timing get captured.
+-- Event recorders: off unless `/qth probe rec` turned them on (saved setting).
 local f = CreateFrame("Frame")
-f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
-f:RegisterUnitEvent("UNIT_AURA", "target")
-f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-f:RegisterEvent("PLAYER_REGEN_DISABLED")
-f:RegisterEvent("PLAYER_REGEN_ENABLED")
+local combatOk
+function ns.ProbeStartRecording()
+  f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+  f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
+  f:RegisterUnitEvent("UNIT_AURA", "target")
+  f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+  f:RegisterEvent("PLAYER_REGEN_DISABLED")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  -- UNIT_COMBAT is fine on Forever (DoesItDie ships using it). Never register
+  -- COMBAT_LOG_EVENT_UNFILTERED: Forever answers with ADDON_ACTION_FORBIDDEN,
+  -- which pcall cannot catch (Details skips it on these clients too).
+  combatOk = pcall(f.RegisterUnitEvent, f, "UNIT_COMBAT", "target")
+  ns.ProbeRegistered = { UNIT_COMBAT = combatOk }
+end
 
 -- Only casts at something attackable (or while fighting) are worth keeping;
 -- crafting pushed the DoT casts out of the first report.
@@ -240,10 +248,6 @@ local function castIsInteresting()
   local hostile = Try(UnitCanAttack, "player", "target")
   return IsSecret(hostile) or hostile == true
 end
--- UNIT_COMBAT is fine on Forever (DoesItDie ships using it). Never register
--- COMBAT_LOG_EVENT_UNFILTERED: Forever answers with ADDON_ACTION_FORBIDDEN,
--- which pcall cannot catch (Details skips it on these clients too).
-local combatOk = pcall(f.RegisterUnitEvent, f, "UNIT_COMBAT", "target")
 
 f:SetScript("OnEvent", function(_, event, ...)
   ns.SafeCall("probe:" .. event, function(...)
@@ -283,5 +287,3 @@ f:SetScript("OnEvent", function(_, event, ...)
     end
   end, ...)
 end)
-
-ns.ProbeRegistered = { UNIT_COMBAT = combatOk }

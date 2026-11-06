@@ -2,9 +2,14 @@
 ## Title: QuestTargetHelper
 ## Notes: Speed-levelling helper: DoT kill zone on nameplates and unit frames, and next-quest-mob targeting.
 ## Author: cdblake
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: QuestTargetHelperDB
 
 Safe.lua
+Math.lua
+Spells.lua
+Tracker.lua
+Overlay.lua
+Frames.lua
 Probe.lua
 Core.lua
