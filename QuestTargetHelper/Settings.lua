@@ -30,6 +30,7 @@ ns.DEFAULTS = {
   doubleDip = true,   -- "x2" on mobs counting for 2+ objectives
   alerts = true,      -- quest complete / nothing left here
   alertSound = true,
+  lootHint = true,    -- "Loot: press F" when the corpse in front of you has loot
   probeRec = false,
 }
 
@@ -90,6 +91,11 @@ function ns.RegisterSettings()
   Checkbox("doubleDip", "Show x2 on mobs that count for two objectives", nil)
   Checkbox("alerts", "Announce completed quests and \"nothing left here\"", nil)
   Checkbox("alertSound", "Play a sound with announcements", nil)
+
+  Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
+    "One-key looting", "Set up", function() ns.Loot.Setup() end,
+    "Turns on Blizzard's Interact Key for whatever is in front of you, plus auto loot. Then one key loots the nearest corpse, no targeting.", false))
+  Checkbox("lootHint", "Show \"Loot: press <key>\" at lootable corpses", nil)
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "Feedback and bug reports", "Open", function() ns.ShowFeedback() end, nil, false))

@@ -17,6 +17,7 @@ Quest.lua
 Targeting.lua
 Markers.lua
 Alerts.lua
+Loot.lua
 Panel.lua
 Settings.lua
 Feedback.lua

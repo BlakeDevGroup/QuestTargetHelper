@@ -6,7 +6,7 @@ local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts and ns.Loot) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
@@ -89,6 +89,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         ns.SafeCall("targeting", ns.Targeting.Refresh, now)
         ns.SafeCall("panel", ns.Panel.Refresh, now)
         ns.SafeCall("markers", ns.Markers.Update, now)
+        ns.SafeCall("loot", ns.Loot.Update)
       end)
     end
   end)
@@ -114,6 +115,8 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
     elseif cmd == "on" or cmd == "off" then
       Settings.SetValue("QTH_enabled", cmd == "on")
       say("kill zone " .. cmd)
+    elseif cmd == "loot" then
+      ns.Loot.Setup()
     elseif cmd == "feedback" or cmd == "bug" then
       ns.ShowFeedback()
     elseif cmd == "debug" then
