@@ -6,7 +6,7 @@ local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
@@ -59,6 +59,8 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       Frames.OnPlateAdded(a1)
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
       Frames.OnPlateRemoved(a1)
+    elseif event == "QUEST_LOG_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
+      ns.Quest.Invalidate()
     elseif event == "ADDON_LOADED" and a1 == ADDON then
       QuestTargetHelperDB = QuestTargetHelperDB or {}
       QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
@@ -72,8 +74,11 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       f:RegisterUnitEvent("UNIT_COMBAT", "target")
       f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
       f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+      f:RegisterEvent("QUEST_LOG_UPDATE")
+      f:RegisterUnitEvent("UNIT_QUEST_LOG_CHANGED", "player")
       if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
+      C_Timer.NewTicker(0.25, function() ns.SafeCall("panel", ns.Panel.Refresh, GetTime()) end)
     end
   end)
 end)

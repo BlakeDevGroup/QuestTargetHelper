@@ -23,6 +23,8 @@ ns.DEFAULTS = {
   opacity = 55,       -- percent
   color = 1,          -- index into ns.COLORS
   skullSize = 16,
+  panelMode = 3,      -- index into ns.PANEL_MODES: Off / In combat / Quest mobs nearby / Always
+  panelLocked = false,
   probeRec = false,
 }
 
@@ -65,6 +67,12 @@ function ns.RegisterSettings()
     function(v) return v .. "%" end, nil)
   Slider("skullSize", "Skull size", 10, 32, 2,
     function(v) return v .. " px" end, nil)
+
+  Slider("panelMode", "Pull tracker panel", 1, #ns.PANEL_MODES, 1,
+    function(v) return ns.PANEL_MODES[v] or "?" end,
+    "Quest objectives with kills in flight (quest mobs carrying your DoTs), and nearby quest mobs with their kill zones.")
+  Checkbox("panelLocked", "Lock the pull tracker",
+    "Unlocked, drag it to move it. Locked, clicks go through it.")
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "Feedback and bug reports", "Open", function() ns.ShowFeedback() end, nil, false))
