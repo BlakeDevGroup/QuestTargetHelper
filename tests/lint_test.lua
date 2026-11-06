@@ -6,8 +6,12 @@ local H = require("harness")
 local T = H.suite("lint")
 local eq = T.eq
 
-local FILES = { "Safe", "Math", "Rules", "Spells", "Tracker", "Overlay", "Frames", "Quest", "Snapshot",
-  "Targeting", "Markers", "Alerts", "Loot", "Panel", "Settings", "Feedback", "Probe", "Core" }
+-- Every Lua file the TOC loads (and each one must exist).
+local FILES = {}
+for line in assert(io.open("QuestTargetHelper/QuestTargetHelper.toc", "r")):lines() do
+  local name = line:match("^([%w_]+)%.lua%s*$")
+  if name then FILES[#FILES + 1] = name end
+end
 
 local function source(name)
   local f = assert(io.open("QuestTargetHelper/" .. name .. ".lua", "r"))
@@ -59,7 +63,10 @@ eq("no unit attribute on click buttons", offenders('SetAttribute%("unit'), "")
 -- can't be targeted at all on Forever; only names can.
 eq("never target a nameplate token", offenders('"/target " %.%. [%w%.]*unit'), "")
 eq("rows target by name", (source("Panel"):find('"/targetexact " %.%. name') ~= nil), true)
-eq("keybind targets by name", (source("Targeting"):find('"/targetexact " %.%. best%.name') ~= nil), true)
+
+-- The keybind and looting were removed: nothing may still point at them.
+eq("no Targeting or Loot module left", offenders("ns%.Targeting") .. offenders("ns%.Loot"), "")
+eq("TOC lists the core files", #FILES >= 16, true)
 
 -- Bug: only the name part of a row took clicks; the kill-zone frames over the
 -- bar were in the way. Display frames ignore the mouse, the click layer is HIGH.

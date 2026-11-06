@@ -297,7 +297,6 @@ local function drawRow(r, unit, now, s, clickable, snap)
   -- Rows that showed up mid-fight can't be clicked until combat ends (the
   -- click layer is frozen in combat): drawn faded rather than labelled.
   r:SetAlpha(clickable and 1 or 0.5)
-  if ns.Targeting.nextUnit == unit then label = "|cff40ff40>|r " .. label end
   r.name:SetText(label)
   local targeted = ns.Rules.IsTarget(guid, Tracker.GuidFor("target"))
   r.sel:SetShown(targeted)

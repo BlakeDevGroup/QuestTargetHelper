@@ -6,7 +6,7 @@ local function say(msg) print(PREFIX .. msg) end
 
 -- WoW only rereads a TOC's file list when the client starts, so after an
 -- update that adds files a /reload runs new Core.lua without its modules.
-if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Targeting and ns.Markers and ns.Alerts and ns.Loot and ns.Rules and ns.Snapshot) then
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells and ns.RegisterSettings and ns.ShowFeedback and ns.Panel and ns.Quest and ns.Markers and ns.Alerts and ns.Rules and ns.Snapshot) then
   C_Timer.After(3, function()
     say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
   end)
@@ -82,8 +82,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       -- After Plater has applied its own range at login.
       C_Timer.After(2, function() ns.SafeCall("range", ns.ApplyPlateRange, false) end)
     elseif event == "PLAYER_REGEN_DISABLED" then
-      ns.Targeting.EnterCombat(GetTime()) -- last moment secure buttons may change
-      ns.Panel.EnterCombat(GetTime())
+      ns.Panel.EnterCombat(GetTime()) -- last moment secure buttons may change
       -- Diagnostics: a dump 3s into the first few fights of a session, so
       -- nobody has to type mid-fight. Read from SavedVariables after /reload.
       if autoDumps > 0 then
@@ -109,13 +108,11 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       f:RegisterEvent("PLAYER_ENTERING_WORLD")
       if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
-      -- Quest-side work at 4x/s: pick the next mob first so the panel and markers show it.
+      -- Quest-side work at 4x/s.
       C_Timer.NewTicker(0.25, function()
         local now = GetTime()
-        ns.SafeCall("targeting", ns.Targeting.Refresh, now)
         ns.SafeCall("panel", ns.Panel.Refresh, now)
         ns.SafeCall("markers", ns.Markers.Update, now)
-        ns.SafeCall("loot", ns.Loot.Update)
       end)
     end
   end)
@@ -227,8 +224,6 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
     elseif cmd == "on" or cmd == "off" then
       Settings.SetValue("QTH_enabled", cmd == "on")
       say("kill zone " .. cmd)
-    elseif cmd == "loot" then
-      ns.Loot.Setup()
     elseif cmd == "feedback" or cmd == "bug" then
       ns.ShowFeedback()
     elseif cmd == "debug" then

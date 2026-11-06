@@ -66,12 +66,13 @@ local function reset()
   world.units, world.lockdown, frames.plates, dots = {}, false, {}, {}
   world.units.player = { guid = "Player-1", name = "Me", combat = false }
   Q.cache = {}
+  S.ours = {}
 end
 
 local KILL = { { type = 17, leftText = "Razormane Raid" }, { type = 8, leftText = "Razormane Raider slain: 2/8" } }
 
 ---------------------------------------------------------------------------
--- Bug: everything stopped (panel, keybind, /qth) because measuring a
+-- Bug: everything stopped (panel, /qth) because measuring a
 -- nameplate throws on Forever: "Can't measure restricted regions".
 ---------------------------------------------------------------------------
 reset()
@@ -84,7 +85,6 @@ eq("restricted plate: height unknown -> 0", ok and snaps[1] and snaps[1].y, 0)
 local ctx
 ok, snaps, ctx = pcall(S.All, 100)
 eq("restricted plate: still a quest mob row", ok and #R.Rows(snaps, ctx, Q.Progress), 1)
-eq("restricted plate: still a keybind candidate", ok and #R.NextCandidates(snaps, ctx, Q.Progress), 1)
 
 ---------------------------------------------------------------------------
 -- Razormane Raider in a fight: quest mob, and fighting us.
@@ -92,10 +92,10 @@ eq("restricted plate: still a keybind candidate", ok and #R.NextCandidates(snaps
 reset()
 world.lockdown = true
 plate("nameplate1", { guid = "C-1", name = "Razormane Raider", canAttack = true, dead = false,
-  tapDenied = false, combat = true, tooltip = KILL, bottom = 200 })
+  tapDenied = false, combat = true, targets = "player", tooltip = KILL, bottom = 200 })
 snaps, ctx = S.All(100)
 eq("raider: quest mob", R.IsQuestMob(snaps[1], Q.Progress), true)
-eq("raider: fighting us (in combat, untagged)", R.Fighting(snaps[1], ctx), true)
+eq("raider: fighting us (targets us)", R.Fighting(snaps[1], ctx), true)
 eq("raider: row", #R.Rows(snaps, ctx, Q.Progress), 1)
 eq("raider: objective line", R.Objectives(snaps, Q.Progress)[1].text, "Razormane Raider slain")
 
@@ -153,5 +153,24 @@ plate("nameplate1", { guid = "C-1", name = "Wolf", canAttack = true, dead = fals
   combat = secret(), targets = "pet", tooltip = { { type = 2, leftText = "Wolf" } } })
 snaps, ctx = S.All(100)
 eq("mob on our pet: fighting", R.Fighting(snaps[1], ctx), true)
+
+-- Bug: "mobs in combat out of party are shown": a stranger's fresh pull
+-- (in combat, untagged, not on us) is not listed; our own pull stays listed
+-- when its target goes secret.
+reset()
+world.lockdown = true
+plate("nameplate1", { guid = "C-1", name = "Wolf", canAttack = true, dead = false, tapDenied = false,
+  combat = true, targets = "player", tooltip = { { type = 2, leftText = "Wolf" } } })
+plate("nameplate2", { guid = "C-2", name = "Wolf", canAttack = true, dead = false, tapDenied = false,
+  combat = true, targets = "stranger", tooltip = { { type = 2, leftText = "Wolf" } } })
+snaps, ctx = S.All(100)
+eq("stranger's pull: not a row", #R.Rows(snaps, ctx, Q.Progress), 1)
+world.units.nameplate1.targets = secret()
+snaps, ctx = S.All(101)
+eq("our pull, target now secret: still a row", #R.Rows(snaps, ctx, Q.Progress), 1)
+world.lockdown = false
+world.units.player.combat = false
+snaps, ctx = S.All(102)
+eq("out of combat: memory cleared", next(S.ours), nil)
 
 return T.done()

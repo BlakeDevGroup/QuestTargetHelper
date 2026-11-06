@@ -25,12 +25,9 @@ ns.DEFAULTS = {
   skullSize = 16,
   panelMode = 3,      -- index into ns.PANEL_MODES: Off / In combat / Quest mobs nearby / Always
   panelLocked = false,
-  markSkull = true,   -- the keybind also puts a skull on the mob it targets
-  nextMarker = true,  -- green outline on the next mob's nameplate
   doubleDip = true,   -- "x2" on mobs counting for 2+ objectives
   alerts = true,      -- "Quest complete: <title>"
   alertSound = true,
-  lootHint = true,    -- "Loot: press F" when the corpse in front of you has loot
   plateRange = 0,     -- nameplateMaxDistance in yards; 0 = leave the game's value
   probeRec = false,
 }
@@ -77,29 +74,16 @@ function ns.RegisterSettings()
 
   Slider("plateRange", "Nameplate range", 0, 60, 1,
     function(v) return v == 0 and "Game default" or (v .. " yd") end,
-    "How far away nameplates appear, and with them the mobs the pull tracker and keybind can see. The game caps it; the value it accepts is printed in chat. Plater has its own setting for this, which this overrides after login.")
+    "How far away nameplates appear, and with them the mobs the pull tracker can see. The game caps it; the value it accepts is printed in chat. Plater has its own setting for this, which this overrides after login.")
   Slider("panelMode", "Pull tracker panel", 1, #ns.PANEL_MODES, 1,
     function(v) return ns.PANEL_MODES[v] or "?" end,
     "Nearby quest mobs and mobs fighting your side, with their kill zones and the objectives they count for. Left-click a mob to target it, right-click to put a skull on it.")
   Checkbox("panelLocked", "Lock the pull tracker",
     "Unlocked, drag it by the objectives to move it. Locked, clicks outside the mob rows go through it.")
 
-  Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
-    "Next quest mob keybind", "Bind", function()
-      if Settings.KEYBINDINGS_CATEGORY_ID then Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID) end
-      print("|cff55ff55QTH|r Key Bindings > AddOns > QuestTargetHelper > Target next quest mob")
-    end, "Targets the best unfinished quest mob nearby: not tagged by someone else, not already dotted, two objectives before one.", false))
-  Checkbox("markSkull", "Keybind puts a skull on the mob", nil)
-  Checkbox("nextMarker", "Outline the next mob's nameplate",
-    "Out of combat only: in combat the key targets by name, so there is no exact next mob to show.")
   Checkbox("doubleDip", "Show x2 on mobs that count for two objectives", nil)
   Checkbox("alerts", "Announce completed quests", nil)
   Checkbox("alertSound", "Play a sound with the announcement", nil)
-
-  Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
-    "One-key looting", "Set up", function() ns.Loot.Setup() end,
-    "Turns on Blizzard's Interact Key for whatever is in front of you, plus auto loot. Then one key loots the nearest corpse, no targeting.", false))
-  Checkbox("lootHint", "Show \"Loot: press <key>\" at lootable corpses", nil)
 
   Settings.RegisterInitializer(category, CreateSettingsButtonInitializer(
     "Feedback and bug reports", "Open", function() ns.ShowFeedback() end, nil, false))

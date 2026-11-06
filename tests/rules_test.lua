@@ -80,7 +80,6 @@ local finished = mob("np1", DONE)
 eq("finished objective: not a quest mob", R.IsQuestMob(finished), false)
 eq("finished objective: no row out of combat", units(R.Rows({ finished }, OUT_OF_COMBAT)), "")
 eq("finished objective: no objective line", #R.Objectives({ finished }), 0)
-eq("finished objective: not a keybind candidate", #R.NextCandidates({ finished }, {}), 0)
 
 -- The quest log is ahead of the tooltip: finished there, so finished here.
 local logDone = function(title, o) return 4, 4 end
@@ -101,8 +100,10 @@ eq("dotted by us: fighting", R.Fighting(mob("np1", plain, { rem = 50 }), OUT_OF_
 eq("our threat line > 0: fighting", R.Fighting(mob("np1", plain, { threatLine = true }), IN_COMBAT), true)
 eq("attacking our pet (status 3): fighting", R.Fighting(mob("np1", plain, { threatStatus = 3 }), IN_COMBAT), true)
 eq("targets a group member: fighting", R.Fighting(mob("np1", plain, { targetsSide = true }), IN_COMBAT), true)
-eq("in combat, untagged, we're fighting: fighting",
-  R.Fighting(mob("np1", plain, { inCombat = true, tapDenied = false }), IN_COMBAT), true)
+-- Bug: "mobs in combat out of party are shown". In combat and untagged is also
+-- a stranger's fresh pull, or a mob fighting a guard: not a signal.
+eq("in combat, untagged, nothing points at us: not ours",
+  R.Fighting(mob("np1", plain, { inCombat = true, tapDenied = false }), IN_COMBAT), false)
 -- The "any mob" side:
 eq("stranger's fight (tagged by them): not ours",
   R.Fighting(mob("np1", plain, { inCombat = true, tapDenied = true }), IN_COMBAT), false)
@@ -113,16 +114,14 @@ eq("tagged unknown (secret): not ours by that signal",
   R.Fighting(mob("np1", plain, { inCombat = true, tapDenied = UNKNOWN }), IN_COMBAT), false)
 eq("in combat unknown (secret): not ours by that signal",
   R.Fighting(mob("np1", plain, { inCombat = UNKNOWN, tapDenied = false }), IN_COMBAT), false)
--- Secret facts must never make a mob a keybind candidate's blocker either.
-eq("tagged unknown: still a keybind candidate",
-  #R.NextCandidates({ mob("np1", HOOVES, { tapDenied = UNKNOWN }) }, {}), 1)
 eq("idle wolf: not ours", R.Fighting(mob("np1", plain), IN_COMBAT), false)
 
 -- Rows: our fights (quest or not) plus quest mobs; strangers' fights excluded.
 local rows = R.Rows({
   mob("np1", HOOVES),                                            -- quest mob, idle
-  mob("np2", plain, { inCombat = true, tapDenied = false }),     -- wolf fighting us
+  mob("np2", plain, { inCombat = true, targetsSide = true }),    -- wolf fighting us
   mob("np3", plain, { inCombat = true, tapDenied = true }),      -- stranger's fight
+  mob("np6", plain, { inCombat = true, tapDenied = false }),     -- stranger's fresh pull
   mob("np4", plain),                                             -- idle wolf
   mob("np5", HOOVES, { rem = 80 }),                              -- quest mob we dotted
 }, IN_COMBAT)
@@ -130,22 +129,20 @@ eq("rows: fights first, most DoT damage first, then quest mobs", units(rows), "n
 eq("rows: dead mobs dropped", units(R.Rows({ mob("np1", HOOVES, { dead = true }) }, OUT_OF_COMBAT)), "")
 eq("rows: non-attackable dropped", units(R.Rows({ mob("np1", HOOVES, { attackable = false }) }, OUT_OF_COMBAT)), "")
 
----------------------------------------------------------------------------
--- Keybind: next quest mob
----------------------------------------------------------------------------
-local TWO = { { type = 17, leftText = "The Zhevra" }, { type = 8, leftText = "1/4 Zhevra Hooves" },
-  { type = 17, leftText = "Plainstrider Menace" }, { type = 8, leftText = "Zhevra Runner slain: 2/6" } }
-local list = R.NextCandidates({
-  mob("np1", HOOVES, { y = 300 }),
-  mob("np2", HOOVES, { y = 100 }),                    -- lower on screen = nearer
-  mob("np3", TWO, { y = 500 }),                       -- double dip wins
-  mob("np4", HOOVES, { tapDenied = true }),           -- tagged by someone else
-  mob("np5", HOOVES, { rem = 40 }),                   -- already dotted
-  mob("np6", HOOVES),                                 -- our current target
-  mob("np7", DONE),                                   -- objective finished
-}, { targetGuid = "Creature-np6" })
-eq("keybind order: double dip, then nearest", units(list), "np3,np2,np1")
-eq("keybind: open objective count", list[1] and list[1].open, 2)
+-- Our fight stays ours when its signals flicker (switches to the pet, a value
+-- goes secret for a tick), until our side leaves combat.
+local wolf = mob("np1", plain, { inCombat = true, targetsSide = true })
+local ours = R.UpdateOurs({}, { wolf }, IN_COMBAT)
+local flicker = mob("np1", plain, { inCombat = true, targetsSide = UNKNOWN })
+eq("sticky: remembered after one signal", ours[wolf.guid], true)
+eq("sticky: still fighting when the signal goes away",
+  R.Fighting(flicker, { sideInCombat = true, ours = ours }), true)
+ours = R.UpdateOurs(ours, { flicker }, IN_COMBAT)
+eq("sticky: kept while in combat", ours[wolf.guid], true)
+ours = R.UpdateOurs(ours, { flicker }, OUT_OF_COMBAT)
+eq("sticky: forgotten out of combat", ours[wolf.guid], nil)
+eq("sticky: a stranger's pull is never remembered",
+  R.UpdateOurs({}, { mob("np2", plain, { inCombat = true, tapDenied = false }) }, IN_COMBAT)["Creature-np2"], nil)
 
 ---------------------------------------------------------------------------
 -- Bug: "the widget doesn't update when I get new items" (log beats tooltip)

@@ -44,8 +44,11 @@ local function sideInCombat(side)
   return false
 end
 
+-- Mobs seen fighting our side this fight (Rules.UpdateOurs keeps it).
+S.ours = {}
+
 function S.Context(side)
-  return { sideInCombat = sideInCombat(side), targetGuid = Tracker.GuidFor("target") }
+  return { sideInCombat = sideInCombat(side), targetGuid = Tracker.GuidFor("target"), ours = S.ours }
 end
 
 function S.ForUnit(unit, now, side)
@@ -85,5 +88,8 @@ function S.All(now)
     local s = S.ForUnit(unit, now, side)
     if s then snaps[#snaps + 1] = s end
   end
-  return snaps, S.Context(side)
+  local ctx = S.Context(side)
+  S.ours = ns.Rules.UpdateOurs(S.ours, snaps, ctx)
+  ctx.ours = S.ours
+  return snaps, ctx
 end

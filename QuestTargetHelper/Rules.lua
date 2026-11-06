@@ -10,7 +10,7 @@
 --   rem           DoT damage of ours still to come (number, 0 if none)
 --   entry         quest entry from Quest.lua: { name, quests = { {title, objectives} }, threat }
 --   related       C_QuestLog.UnitIsRelatedToActiveQuest, or nil
--- ctx: { sideInCombat = bool, targetGuid = guid or nil }
+-- ctx: { sideInCombat = bool, targetGuid = guid or nil, ours = { [guid] = true } }
 -- progress(title, objective) -> have, need   (quest log first, see Quest.Progress)
 local _, ns = ...
 ns = ns or {}
@@ -51,15 +51,30 @@ end
 --  * our threat share on it is above 0 (tooltip line, plain in combat);
 --  * it is attacking one of us (threat status 2-3);
 --  * it has one of us targeted;
---  * we're fighting, it's in combat, and it isn't tagged by someone else
---    (mobs fighting strangers are tagged by them).
-function R.Fighting(s, ctx)
+--  * it passed one of those earlier this fight (ctx.ours[guid]): signals
+--    flicker when a mob switches targets or a value goes secret for a tick.
+-- Not "in combat and untagged": mobs fighting strangers or guards look the same.
+function R.FightingNow(s)
   if (s.rem or 0) > 0 then return true end
   if s.entry and s.entry.threat then return true end
   if s.threatStatus and s.threatStatus >= 2 then return true end
   if s.targetsSide == true then return true end
-  if ctx.sideInCombat and s.inCombat == true and s.tapDenied == false then return true end
   return false
+end
+
+function R.Fighting(s, ctx)
+  if R.FightingNow(s) then return true end
+  return ctx.sideInCombat == true and ctx.ours ~= nil and s.guid ~= nil and ctx.ours[s.guid] == true
+end
+
+-- The "ours" memory after this pass: kept and added to while our side is in
+-- combat, emptied once it's out.
+function R.UpdateOurs(ours, snaps, ctx)
+  if not ctx.sideInCombat then return {} end
+  for _, s in ipairs(snaps) do
+    if s.guid and R.FightingNow(s) then ours[s.guid] = true end
+  end
+  return ours
 end
 
 local function alive(s) return s.attackable == true and s.dead ~= true end
@@ -82,27 +97,6 @@ function R.Rows(snaps, ctx, progress)
     return a.unit < b.unit
   end)
   return rows
-end
-
--- Keybind candidates: alive, not tagged by someone else, not already carrying
--- our DoTs, not our current target, with an unfinished objective. Most open
--- objectives first (double dips), then lowest on screen (roughly nearest).
-function R.NextCandidates(snaps, ctx, progress)
-  local list = {}
-  for _, s in ipairs(snaps) do
-    if alive(s) and s.tapDenied ~= true and s.guid ~= ctx.targetGuid and (s.rem or 0) == 0 then
-      local open = R.OpenObjectives(s.entry, progress)
-      if open > 0 then
-        list[#list + 1] = { unit = s.unit, guid = s.guid, name = s.name, open = open, y = s.y or 0 }
-      end
-    end
-  end
-  table.sort(list, function(a, b)
-    if a.open ~= b.open then return a.open > b.open end
-    if a.y ~= b.y then return a.y < b.y end
-    return a.unit < b.unit
-  end)
-  return list
 end
 
 -- Unfinished objectives of the attackable mobs around, in first-seen order

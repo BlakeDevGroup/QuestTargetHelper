@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: QuestTargetHelper
-## Notes: Speed-levelling helper: DoT kill zone on nameplates and unit frames, and next-quest-mob targeting.
+## Notes: Speed-levelling helper: DoT kill zone on nameplates and unit frames, and a clickable pull tracker of nearby quest mobs.
 ## Author: cdblake
 ## Version: 0.9.0
 ## SavedVariables: QuestTargetHelperDB
@@ -18,10 +18,8 @@ Overlay.lua
 Frames.lua
 Quest.lua
 Snapshot.lua
-Targeting.lua
 Markers.lua
 Alerts.lua
-Loot.lua
 Panel.lua
 Settings.lua
 Feedback.lua

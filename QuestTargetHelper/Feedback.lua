@@ -31,10 +31,13 @@ end
 
 local function build()
   local f = CreateFrame("Frame", "QuestTargetHelperFeedback", UIParent, "BasicFrameTemplateWithInset")
-  f:SetSize(480, 280)
+  f:SetSize(480, 360)
   f:SetPoint("CENTER")
   f:SetFrameStrata("DIALOG")
   f:SetMovable(true)
+  f:SetResizable(true)
+  if f.SetResizeBounds then f:SetResizeBounds(360, 240, 1000, 900) end
+  f:SetClampedToScreen(true)
   f:EnableMouse(true)
   f:RegisterForDrag("LeftButton")
   f:SetScript("OnDragStart", f.StartMoving)
@@ -52,8 +55,9 @@ local function build()
   hint:SetText("Press Ctrl+C to copy the link, open it in your browser, and paste the report below into your issue.")
 
   local url = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-  url:SetSize(440, 24)
-  url:SetPoint("TOPLEFT", 22, -76)
+  url:SetHeight(24)
+  url:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 6, -8) -- under the hint however it wraps
+  url:SetPoint("RIGHT", -22, 0)
   url:SetAutoFocus(false)
   url:SetScript("OnEditFocusGained", selectAll)
   url:SetScript("OnMouseUp", selectAll)
@@ -61,19 +65,44 @@ local function build()
   url:SetScript("OnTextChanged", function(self, user) if user then self:SetText(ns.FEEDBACK_URL) end end)
 
   local bg = CreateFrame("Frame", nil, f, "TooltipBackdropTemplate")
-  bg:SetPoint("TOPLEFT", 16, -110)
-  bg:SetPoint("BOTTOMRIGHT", -16, 16)
-  local text = CreateFrame("EditBox", nil, bg)
+  bg:SetPoint("TOPLEFT", url, "BOTTOMLEFT", -6, -10)
+  bg:SetPoint("BOTTOMRIGHT", -16, 22)
+  -- The report scrolls: the edit box is the scroll child, as wide as the view
+  -- (so long error lines wrap) and as tall as its text.
+  local scroll = CreateFrame("ScrollFrame", nil, bg, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 8, -8)
+  scroll:SetPoint("BOTTOMRIGHT", -28, 8)
+  local text = CreateFrame("EditBox", nil, scroll)
   text:SetMultiLine(true)
   text:SetFontObject(ChatFontNormal)
-  text:SetPoint("TOPLEFT", 8, -8)
-  text:SetPoint("BOTTOMRIGHT", -8, 8)
+  text:SetWidth(400)
   text:SetAutoFocus(false)
+  scroll:SetScrollChild(text)
+  scroll:SetScript("OnSizeChanged", function(_, w) if w and w > 0 then text:SetWidth(w) end end)
+  scroll:EnableMouse(true)
+  scroll:SetScript("OnMouseDown", function() text:SetFocus() end)
+  -- Keep the caret in view while selecting with the keyboard.
+  text:SetScript("OnCursorChanged", function(_, _, y, _, h)
+    local top, view = scroll:GetVerticalScroll(), scroll:GetHeight()
+    y = -y
+    if y < top then scroll:SetVerticalScroll(y)
+    elseif y + h > top + view then scroll:SetVerticalScroll(y + h - view) end
+  end)
+
+  -- Drag the bottom-right corner to resize.
+  local grip = CreateFrame("Button", nil, f)
+  grip:SetSize(16, 16)
+  grip:SetPoint("BOTTOMRIGHT", -4, 4)
+  grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  grip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+  grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing() end)
   text:SetScript("OnMouseUp", selectAll)
   text:SetScript("OnEscapePressed", function() f:Hide() end)
   text:SetScript("OnTextChanged", function(self, user) if user then self:SetText(f.report) end end)
 
-  f.url, f.text = url, text
+  f.url, f.text, f.scroll = url, text, scroll
   return f
 end
 
@@ -84,4 +113,11 @@ function ns.ShowFeedback()
   frame.text:SetText(frame.report)
   frame:Show()
   selectAll(frame.url)
+  -- Grow to fit the report (up to most of the screen); the rest scrolls.
+  C_Timer.After(0, function()
+    local f, view = frame, frame.scroll:GetHeight()
+    if not view or view <= 0 then return end
+    local want = f:GetHeight() - view + frame.text:GetHeight() + 8
+    f:SetHeight(math.max(240, math.min(want, UIParent:GetHeight() * 0.8)))
+  end)
 end

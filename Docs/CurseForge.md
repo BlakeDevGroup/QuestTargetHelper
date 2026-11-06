@@ -6,7 +6,7 @@ Everything needed to fill in the project page. Copy each block as is.
 QuestTargetHelper
 
 ## Summary (the one line under the name and in search results)
-See at a glance which mobs your DoTs will kill, and target the next quest mob with one key. Built for WoW Forever.
+See at a glance which mobs your DoTs will kill, and click quest mobs to target them. Built for WoW Forever.
 
 ## Categories
 - Primary: **Quests & Leveling**
@@ -24,7 +24,7 @@ WoW Forever 1.60.1 (Interface 16001)
 
 ## Description (paste into the description editor)
 
-**Stop wasting casts on mobs that are already dead, and stop hunting for the next quest mob.**
+**Stop wasting casts on mobs that are already dead, and stop hunting for quest mobs.**
 
 A speed-levelling helper for **WoW Forever**.
 
@@ -34,11 +34,8 @@ A purple zone on every health bar shows the damage your DoTs still have to deal.
 - Nameplates (Blizzard and Plater), target and focus
 - Every DoT class
 
-### 🎯 One-key quest targeting
-One key targets the best quest mob nearby and skulls it. It skips mobs someone else tagged and ones you've already dotted, and goes for mobs that count for two objectives first.
-
-### 📋 Pull tracker
-Your quest objectives with live counts, plus every mob fighting you or your group. Click to target, right-click to skull.
+### 🎯 Pull tracker
+Every quest mob nearby and every mob fighting you or your group, with health bars, kill zones and your objectives with live counts. **Click a mob to target it, right-click to skull it.** Mobs that count for two objectives are marked x2.
 
 ### ✅ Just works
 Built for Forever's addon rules, so it doesn't break. Only your quests count in a group. Light on settings, heavy on tests.
@@ -50,7 +47,7 @@ Bugs or ideas: `/qth feedback` or [GitHub](https://github.com/BlakeDevGroup/Ques
 ## Screenshots (take these in game; the first is the thumbnail)
 1. **Hero shot:** 3 dotted mobs on nameplates, one with its health inside the purple zone and a skull. Plater, default colours. This one sells the addon.
 2. **Pull tracker** mid-fight: two quest mobs and one orange non-quest mob attacking you, objectives with counts above.
-3. **Next quest mob:** the green outline on a nameplate, plus an `x2` mob nearby.
+3. **x2 marker:** a nameplate with `x2`, and the gold outline from hovering its pull-tracker row.
 4. **Target frame** with the kill zone and skull.
 5. **Settings page** (`/qth`), to show it's simple.
 
@@ -64,8 +61,8 @@ Tips: hide other UI clutter, keep the camera close, use a busy quest area, 1920x
 First public release for WoW Forever.
 - Kill zone on nameplates (Blizzard and Plater) and target and focus frames, with a skull when your DoTs are lethal.
 - Pull tracker panel: nearby quest mobs and mobs fighting your side, clickable, with objectives and live counts.
-- Target next quest mob keybind, with skull marking, double-dip priority and next-mob outline.
-- Quest complete announcement, one-key looting setup, nameplate range setting.
+- x2 marker for mobs that count for two objectives.
+- Quest complete announcement and nameplate range setting.
 
 ## Where to post it
 - **CurseForge** first, so the other links point there.

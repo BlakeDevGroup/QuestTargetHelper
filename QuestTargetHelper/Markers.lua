@@ -1,6 +1,5 @@
 -- Nameplate markers, display only:
---  * a green outline on the mob the keybind will target next (out of combat;
---    in combat the button targets by name, so there is no exact "next");
+--  * a gold outline on the mob whose pull-tracker row is hovered;
 --  * "x2" (x3...) on mobs that count for two or more unfinished objectives.
 local _, ns = ...
 local Frames, Quest = ns.Frames, ns.Quest
@@ -20,7 +19,7 @@ local function build(bar)
     { "TOPLEFT", "BOTTOMLEFT", -2, 0, false }, { "TOPRIGHT", "BOTTOMRIGHT", 2, 0, false },
   }) do
     local t = m:CreateTexture(nil, "OVERLAY")
-    t:SetColorTexture(0.25, 1, 0.35, 0.95)
+    t:SetColorTexture(1, 0.82, 0, 1)
     t:SetPoint(spec[1], bar, spec[1], spec[3], spec[4])
     t:SetPoint(spec[2], bar, spec[2], spec[3], spec[4])
     if spec[5] then t:SetHeight(2) else t:SetWidth(2) end
@@ -34,14 +33,9 @@ local function build(bar)
   return m
 end
 
-local function show(bar, isNext, open, hovered)
+local function show(bar, open, hovered)
   local m = bar.__qthMarks or build(bar)
-  -- Gold while its pull-tracker row is hovered, green for the keybind's next mob.
-  local outline = hovered or isNext
-  for _, t in ipairs(m.edges) do
-    if hovered then t:SetColorTexture(1, 0.82, 0, 1) else t:SetColorTexture(0.25, 1, 0.35, 0.95) end
-    t:SetShown(outline)
-  end
+  for _, t in ipairs(m.edges) do t:SetShown(hovered) end
   m.count:SetText(open >= 2 and ("x" .. open) or "")
   m:Show()
   marked[bar] = true
@@ -52,12 +46,10 @@ M.hoverUnit = nil
 
 function M.Update(now)
   local s = ns.settings
-  local nextUnit = s.nextMarker and ns.Targeting.nextUnit or nil
   local still = {}
   for unit in pairs(Frames.plates) do
     local bar = Frames.PlateBar(unit)
     if bar then
-      local isNext = unit == nextUnit
       local isHovered = unit == M.hoverUnit
       local open = 0
       if s.doubleDip then
@@ -65,8 +57,8 @@ function M.Update(now)
         local e = guid and not ns.IsSecret(guid) and Quest.cache[guid] -- never index with a secret
         if e then open = Quest.OpenObjectives(e) end
       end
-      if isNext or isHovered or open >= 2 then
-        show(bar, isNext, open, isHovered)
+      if isHovered or open >= 2 then
+        show(bar, open, isHovered)
         still[bar] = true
       end
     end
