@@ -43,6 +43,8 @@ Your quest objectives with live counts, plus every mob fighting you or your grou
 ### ✅ Just works
 Built for Forever's addon rules, so it doesn't break. Only your quests count in a group. Light on settings, heavy on tests.
 
+**Open world only:** in dungeons and raids Forever hides nameplates and mob info from addons, so QuestTargetHelper switches off there.
+
 Bugs or ideas: `/qth feedback` or [GitHub](https://github.com/BlakeDevGroup/QuestTargetHelper/issues).
 
 ## Screenshots (take these in game; the first is the thumbnail)

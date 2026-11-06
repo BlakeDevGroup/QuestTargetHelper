@@ -41,7 +41,7 @@ local function button()
   btn:HookScript("PostClick", function()
     if current == "" and GetTime() - lastHint > 3 then
       lastHint = GetTime()
-      print("|cff55ff55QTH|r no unfinished quest mobs nearby")
+      print("|cff55ff55QTH|r " .. (ns.Snapshot.InInstance() and "off in dungeons" or "no unfinished quest mobs nearby"))
     end
   end)
   return btn
@@ -68,6 +68,11 @@ end
 -- Out of combat: aim the button at the best plate.
 function G.Refresh(now)
   if InCombatLockdown() then return end
+  if ns.Snapshot.InInstance() then -- off in dungeons
+    G.nextUnit = nil
+    setMacro("")
+    return
+  end
   local best = G.Candidates(now)[1]
   G.nextUnit = best and best.unit or nil
   -- By name: on Forever nameplate tokens can't be targeted (/target nameplate7
@@ -79,6 +84,7 @@ end
 -- plates come and go.
 function G.EnterCombat(now)
   G.nextUnit = nil
+  if ns.Snapshot.InInstance() then setMacro("") return end
   local names, seen = {}, {}
   local function add(name)
     if name and name ~= "?" and not seen[name] then

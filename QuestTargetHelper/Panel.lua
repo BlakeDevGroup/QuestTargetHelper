@@ -273,7 +273,7 @@ end
 -- PLAYER_REGEN_DISABLED, the last moment secure frames may change: freeze the
 -- layout, and make rows clickable even in "In combat" mode (hidden until now).
 function P.EnterCombat(now)
-  if not frame or ns.settings.panelMode == 1 then return end
+  if not frame or ns.settings.panelMode == 1 or ns.Snapshot.InInstance() then return end
   local mobs, snaps = nearbyMobs(now)
   local text = objectiveLines(nearbyObjectives(snaps))
   objHeight = PAD + #text * LINE_H + (#text > 0 and 4 or 0)
@@ -319,6 +319,13 @@ function P.Refresh(now)
   end
   local combat = InCombatLockdown()
   if not combat then frame:EnableMouse(not s.panelLocked) end
+
+  -- Off in dungeons (see Snapshot.InInstance).
+  if ns.Snapshot.InInstance() then
+    if not combat then assignSlots({}, false) end
+    frame:Hide()
+    return
+  end
 
   local mobs, snaps = nearbyMobs(now)
   local text = objectiveLines(nearbyObjectives(snaps))

@@ -33,6 +33,11 @@ Forever doesn't allow targeting or marking without a key press, so this is a key
 ## Looting
 Addons can't loot or interact for you; only Blizzard's Interact key can. `/qth loot` turns on soft interact and auto loot. Then the Interact key loots the corpse in front of you without targeting it, and a "Loot: press <key>" prompt shows when there's loot. Bind **Interact With Target** to a mouse button and looting is one click.
 
+## Limits
+- **Open world only.** In dungeons and raids, Forever gives addons no nameplates and hides mob names, tooltips and IDs, so QuestTargetHelper switches off there.
+- **Same-name mobs:** a row click or the keybind targets by name, and the game picks which of several same-name mobs. Hover a row to see its mob's nameplate outlined in gold.
+- **In combat,** mobs that appear mid-fight are listed but can't be clicked until combat ends.
+
 ## Commands
 - `/qth`: settings (also under Options → AddOns)
 - `/qth on` / `/qth off`

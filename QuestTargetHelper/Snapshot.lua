@@ -11,6 +11,13 @@ local function plain(v) return v ~= nil and not ns.IsSecret(v) end
 local function bool(v) if plain(v) and type(v) == "boolean" then return v end return nil end
 local function num(v) if plain(v) and type(v) == "number" then return v end return nil end
 
+-- Dungeons and raids: Forever gives addons no nameplates there and hides
+-- names, tooltips and GUIDs, so QuestTargetHelper stays off (a stated limit).
+function S.InInstance()
+  local inInstance, kind = IsInInstance()
+  return inInstance == true and (kind == "party" or kind == "raid" or kind == "scenario")
+end
+
 -- Us, our pet, and our group with their pets.
 function S.Side()
   local units = { "player", "pet" }

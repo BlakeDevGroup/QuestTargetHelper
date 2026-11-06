@@ -133,6 +133,18 @@ snaps = S.All(100)
 eq("secret tooltip line: rest parsed", R.OpenObjectives(snaps[1].entry, Q.Progress), 1)
 
 ---------------------------------------------------------------------------
+-- Dungeons: QuestTargetHelper is off (Forever gives no nameplates there).
+---------------------------------------------------------------------------
+_G.IsInInstance = function() return true, "party" end
+eq("in a dungeon: off", S.InInstance(), true)
+_G.IsInInstance = function() return true, "raid" end
+eq("in a raid: off", S.InInstance(), true)
+_G.IsInInstance = function() return false, "none" end
+eq("open world: on", S.InInstance(), false)
+_G.IsInInstance = function() return true, "pvp" end
+eq("battleground: not treated as a dungeon", S.InInstance(), false)
+
+---------------------------------------------------------------------------
 -- Fighting our pet: the mob targets "pet".
 ---------------------------------------------------------------------------
 reset()
