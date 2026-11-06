@@ -1,0 +1,81 @@
+name: release
+
+# Push a tag to release: v1.0.0 uploads as a release, v1.0.0-beta / -alpha as
+# beta / alpha. The tag must match "## Version:" in the TOC.
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CF_PROJECT_ID: "1786417"
+  # CurseForge's name for the game version to file uploads under. Set the repo
+  # variable CF_GAME_VERSION if it isn't "1.60.1" (run "cf-game-versions").
+  CF_GAME_VERSION: ${{ vars.CF_GAME_VERSION || '1.60.1' }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+
+      - name: Tests
+        run: |
+          for f in QuestTargetHelper/*.lua; do luac -p "$f" || exit 1; done
+          lua tests/run_all.lua
+
+      - name: Version from tag, checked against the TOC
+        id: v
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="${tag%%-*}"
+          toc=$(sed -n 's/^## Version: *//p' QuestTargetHelper/QuestTargetHelper.toc | tr -d '\r')
+          if [ "$version" != "$toc" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME says $version but the TOC says $toc"; exit 1
+          fi
+          case "$tag" in
+            *-alpha*) type=alpha ;;
+            *-beta*)  type=beta ;;
+            *)        type=release ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "type=$type" >> "$GITHUB_OUTPUT"
+
+      - name: Build zip
+        run: |
+          mkdir -p dist
+          zip -r "dist/QuestTargetHelper-${{ steps.v.outputs.version }}.zip" QuestTargetHelper
+          unzip -l "dist/QuestTargetHelper-${{ steps.v.outputs.version }}.zip"
+
+      - name: Release notes from CHANGELOG.md (newest section)
+        run: |
+          awk '/^## /{n++} n==1' CHANGELOG.md | tail -n +2 > dist/notes.md
+          cat dist/notes.md
+
+      - name: Upload to CurseForge
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          if [ -z "$CF_API_KEY" ]; then echo "::error::Add the CF_API_KEY repository secret"; exit 1; fi
+          versions=$(curl -sf -H "X-Api-Token: $CF_API_KEY" https://wow.curseforge.com/api/game/versions)
+          id=$(echo "$versions" | jq --arg n "$CF_GAME_VERSION" '[.[] | select(.name == $n) | .id] | first // empty')
+          if [ -z "$id" ]; then
+            echo "::error::No CurseForge game version named '$CF_GAME_VERSION'. Close matches:"
+            echo "$versions" | jq -r '.[] | select(.name | test("1\\.60|orever")) | "\(.id)  \(.name)"'
+            exit 1
+          fi
+          metadata=$(jq -n \
+            --rawfile notes dist/notes.md \
+            --arg name "${{ steps.v.outputs.version }}" \
+            --arg type "${{ steps.v.outputs.type }}" \
+            --argjson gv "$id" \
+            '{changelog: $notes, changelogType: "markdown", displayName: $name, gameVersions: [$gv], releaseType: $type}')
+          curl -sf -H "X-Api-Token: $CF_API_KEY" \
+            -F "metadata=$metadata" \
+            -F "file=@dist/QuestTargetHelper-${{ steps.v.outputs.version }}.zip" \
+            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file"
+          echo
+          echo "Uploaded ${{ steps.v.outputs.version }} (${{ steps.v.outputs.type }}) for game version $CF_GAME_VERSION ($id)"

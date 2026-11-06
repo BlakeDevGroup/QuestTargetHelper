@@ -1,0 +1,18 @@
+name: cf-game-versions
+
+# Run by hand (Actions tab -> cf-game-versions -> Run workflow) to see the game
+# versions CurseForge lists for WoW, so release.yml files uploads correctly.
+on:
+  workflow_dispatch:
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List game versions
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          if [ -z "$CF_API_KEY" ]; then echo "::error::Add the CF_API_KEY repository secret"; exit 1; fi
+          curl -sf -H "X-Api-Token: $CF_API_KEY" https://wow.curseforge.com/api/game/versions \
+            | jq -r 'sort_by(.id) | reverse | .[] | "\(.id)  type=\(.gameVersionTypeID)  \(.name)"' | head -60

@@ -4,6 +4,8 @@
 ## Author: cdblake
 ## Version: 0.9.0
 ## SavedVariables: QuestTargetHelperDB
+## X-Curse-Project-ID: 1786417
+## X-Website: https://github.com/BlakeDevGroup/QuestTargetHelper
 ## Category: Combat
 ## IconTexture: Interface\TargetingFrame\UI-RaidTargetingIcon_8
 
