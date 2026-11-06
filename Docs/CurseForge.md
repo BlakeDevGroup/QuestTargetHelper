@@ -26,52 +26,24 @@ WoW Forever 1.60.1 (Interface 16001)
 
 **Stop wasting casts on mobs that are already dead, and stop hunting for the next quest mob.**
 
-QuestTargetHelper is a speed-levelling helper for **World of Warcraft: Forever**. It shows how much damage your DoTs still have to deal, right on the health bar, and it finds the next mob your quests need.
+A speed-levelling helper for **WoW Forever**.
 
-### Kill zone
-Every mob you've DoTed gets a purple **kill zone** on its health bar: the damage your DoTs still have to deal, drawn from the left edge. **If the health ends inside the zone, your DoTs will kill it.** A skull appears beside the bar when they will.
+### 💀 Kill zone
+A purple zone on every health bar shows the damage your DoTs still have to deal. **Health inside the zone = it dies.** A skull confirms it.
+- Accurate from your first cast, spell power included
+- Nameplates (Blizzard and Plater), target and focus
+- Every DoT class
 
-- **Right from your first cast.** Damage comes from your spell's own tooltip, which already includes your spell power. There's nothing to learn first.
-- **Errs low.** Crits aren't counted, so if it says a mob dies, it does.
-- **On nameplates and your target and focus frames.** Works with Blizzard nameplates and Plater.
-- **Follows your casts.** DoTs cast at your soft target, mouseover or focus count too, not just your target.
-- **Every DoT class:** Warlock, Priest, Druid, Hunter, Mage, Rogue, Shaman, Warrior.
+### 🎯 One-key quest targeting
+One key targets the best quest mob nearby and skulls it. It skips mobs someone else tagged and ones you've already dotted, and goes for mobs that count for two objectives first.
 
-### Pull tracker
-A small panel lists the mobs that matter right now:
-- the quest mobs around you, with the objectives they count for and live counts from your quest log;
-- every mob fighting you, your pet or your group;
-- a mini health bar per mob, with its own kill zone and skull.
+### 📋 Pull tracker
+Your quest objectives with live counts, plus every mob fighting you or your group. Click to target, right-click to skull.
 
-**Left-click a mob to target it, right-click to put a skull on it.** Your current target is highlighted in gold. Mobs tagged by another player are greyed out. In a group, only your own quests and counts are shown, never a teammate's.
+### ✅ Just works
+Built for Forever's addon rules, so it doesn't break. Only your quests count in a group. Light on settings, heavy on tests.
 
-### Next quest mob: one key
-Bind **Target next quest mob**. One press targets the best quest mob around you and puts a skull on it:
-- skips mobs someone else tagged, mobs already carrying your DoTs, and objectives you've finished;
-- prefers **double-dip** mobs, where one kill advances two objectives (marked **x2** on their nameplate);
-- out of combat, the exact mob it will hit is outlined in green.
-
-### Also
-- **Quest complete** announcement, once per quest.
-- **One-key looting setup** (`/qth loot`): turns on Blizzard's Interact key for the corpse in front of you, and shows "Loot: press F" when there's loot.
-- **Nameplate range** setting, so the tracker and keybind see further.
-
-### Commands
-- `/qth`: settings (also under Options → AddOns)
-- `/qth feedback`: report a bug, with a ready-made report to paste
-- `/qth debug`, `/qth quest`: what the addon sees on your target
-
-### How it works on Forever (and why it doesn't break)
-Forever hides mob health, aura data and damage numbers from addons in combat. Addon code can't compare "DoT damage left" with "health left". A health bar can, though: the kill zone is a bar scaled to the mob's max health, so the game draws the comparison and the addon never reads health. The rules it decides with (what's a quest mob, what's fighting you, which mob is next, DoT math) are covered by automated tests that run on every change.
-
-For the same reason, **targeting and looting need a key press**: Forever doesn't let addons target or interact on their own, so QuestTargetHelper sets up the key and you press it.
-
-### Feedback
-Found a bug or have an idea? Type `/qth feedback` in game, or open an issue on [GitHub](https://github.com/BlakeDevGroup/QuestTargetHelper/issues).
-
-*The clipped skull bar idea comes from [Does It Die](https://www.curseforge.com/wow/addons/does-it-die) by Joe Greive (MIT).*
-
----
+Bugs or ideas: `/qth feedback` or [GitHub](https://github.com/BlakeDevGroup/QuestTargetHelper/issues).
 
 ## Screenshots (take these in game; the first is the thumbnail)
 1. **Hero shot:** 3 dotted mobs on nameplates, one with its health inside the purple zone and a skull. Plater, default colours. This one sells the addon.
