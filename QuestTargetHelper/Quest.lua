@@ -23,14 +23,27 @@ function Q.ParseObjective(line, mobName)
   return { text = text, have = tonumber(have), need = tonumber(need), kill = kill }
 end
 
+-- In a group the tooltip also lists party members' progress: a line with the
+-- member's name (QuestPlayer) followed by *their* objectives.
+local LINE_PLAYER = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestPlayer) or 18
+
 -- lines = { {type=, leftText=}, ... } as C_TooltipInfo returns them.
-function Q.ParseTooltip(lines, mobName)
-  local quests, current = {}, nil
+-- isMine(title) -> false drops a quest that isn't in our own quest log.
+function Q.ParseTooltip(lines, mobName, isMine)
+  local quests, current, theirs = {}, nil, false
   for _, l in ipairs(lines) do
     if l.type == LINE_TITLE and type(l.leftText) == "string" then
-      current = { title = l.leftText, objectives = {} }
-      quests[#quests + 1] = current
-    elseif l.type == LINE_OBJECTIVE then
+      theirs = false
+      if isMine and not isMine(l.leftText) then
+        current = nil
+        theirs = true -- a teammate's quest: skip its objectives too
+      else
+        current = { title = l.leftText, objectives = {} }
+        quests[#quests + 1] = current
+      end
+    elseif l.type == LINE_PLAYER then
+      theirs = true -- what follows is a party member's progress, not ours
+    elseif l.type == LINE_OBJECTIVE and not theirs then
       local o = Q.ParseObjective(l.leftText, mobName)
       if o then
         if not current then
@@ -41,7 +54,39 @@ function Q.ParseTooltip(lines, mobName)
       end
     end
   end
-  return quests
+  -- Drop quests left without any objective of ours.
+  local out = {}
+  for _, q in ipairs(quests) do
+    if #q.objectives > 0 then out[#out + 1] = q end
+  end
+  return out
+end
+
+-- Titles of the quests in our own log. nil when the log can't be read, in
+-- which case nothing is filtered out.
+Q.myTitles = nil
+
+function Q.RefreshLog()
+  local titles, any = {}, false
+  if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+      local info = C_QuestLog.GetInfo(i)
+      if info and not info.isHeader and type(info.title) == "string" then
+        titles[info.title], any = true, true
+      end
+    end
+  elseif GetNumQuestLogEntries and GetQuestLogTitle then
+    for i = 1, GetNumQuestLogEntries() do
+      local title, _, _, isHeader = GetQuestLogTitle(i)
+      if not isHeader and type(title) == "string" then titles[title], any = true, true end
+    end
+  end
+  -- An empty log reads the same as a failed read; only trust a log with quests.
+  Q.myTitles = any and titles or nil
+end
+
+local function isMine(title)
+  return Q.myTitles == nil or Q.myTitles[title] == true
 end
 
 -- Unfinished objectives this mob counts for (2+ = one kill, two objectives).
@@ -72,20 +117,26 @@ function Q.ForUnit(unit, now)
     for i, l in ipairs(tip.lines) do
       if plain(l.type) and plain(l.leftText) then
         lines[i] = l
-        if l.type == LINE_THREAT then threat = true end
+        -- "100% Threat" is *our* threat. In a group the line can show on mobs
+        -- only a teammate touched, at 0%; only a share above 0 means ours.
+        if l.type == LINE_THREAT then
+          local pct = tonumber(l.leftText:match("(%d+)%%"))
+          if pct and pct > 0 then threat = true end
+        end
       else
         lines[i] = {}
       end
     end
-    quests = Q.ParseTooltip(lines, name)
+    quests = Q.ParseTooltip(lines, name, isMine)
   end
   e = { at = now, seen = now, name = plain(name) and name or "?", quests = quests, threat = threat }
   Q.cache[guid] = e
   return guid, e
 end
 
--- Quest log changed: re-read every tooltip on the next pass.
+-- Quest log changed: re-read our titles, and every tooltip on the next pass.
 function Q.Invalidate()
+  Q.RefreshLog()
   for _, e in pairs(Q.cache) do e.at = 0 end
 end
 

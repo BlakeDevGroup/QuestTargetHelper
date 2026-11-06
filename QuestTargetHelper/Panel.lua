@@ -127,24 +127,48 @@ local function shouldShow(mode, any)
   return false
 end
 
--- Is this mob fighting us? Our DoTs on it, the threat API (when readable), or
--- the "100% Threat" tooltip line (plain in combat).
-local function fighting(unit, e, rem)
+-- Us, our pet, and our group with their pets: the side a mob can be fighting.
+local function ourSide()
+  local units = { "player", "pet" }
+  if IsInRaid and IsInRaid() then
+    for i = 1, GetNumGroupMembers() do
+      units[#units + 1] = "raid" .. i
+      units[#units + 1] = "raidpet" .. i
+    end
+  elseif IsInGroup and IsInGroup() then
+    for i = 1, 4 do
+      units[#units + 1] = "party" .. i
+      units[#units + 1] = "partypet" .. i
+    end
+  end
+  return units
+end
+
+-- Is this mob in combat with us, our pet or our group (not some stranger)?
+-- Our DoTs on it, our threat share above 0 (tooltip, plain in combat), it is
+-- attacking one of us (threat status 2-3), or it has one of us targeted.
+-- Status 0-1 alone isn't trusted: it can read 0 for mobs we never touched.
+local function fighting(unit, e, rem, side)
   if rem > 0 or (e and e.threat) then return true end
-  local status = UnitThreatSituation and UnitThreatSituation("player", unit)
-  return plain(status)
+  local mobTarget = unit .. "target"
+  for _, u in ipairs(side) do
+    local status = UnitThreatSituation and UnitThreatSituation(u, unit)
+    if plain(status) and status >= 2 then return true end
+    if isTrue(UnitIsUnit(mobTarget, u)) then return true end
+  end
+  return false
 end
 
 -- Mobs for rows: every mob fighting us, plus quest mobs. Fighting first, then
 -- most DoT damage still coming, then the rest.
 local function nearbyMobs(now)
-  local mobs = {}
+  local mobs, side = {}, ourSide()
   for unit in pairs(Frames.plates) do
     if isTrue(UnitCanAttack("player", unit)) and not isTrue(UnitIsDead(unit)) then
       local guid, e = Quest.ForUnit(unit, now)
       if guid then
         local rem = Tracker.Remaining(guid, now)
-        local fight = fighting(unit, e, rem)
+        local fight = fighting(unit, e, rem, side)
         if fight or #e.quests > 0 then
           mobs[#mobs + 1] = { unit = unit, rem = rem, fight = fight }
         end

@@ -43,6 +43,35 @@ eq("open objectives across quests", Q.OpenObjectives({ quests = quests }), 2)
 eq("finished objective not open", Q.OpenObjectives({ quests = {
   { title = "A", objectives = { { have = 4, need = 4 }, { have = 1, need = 3 } } } } }), 1)
 
+-- Grouped: a party member's progress follows a QuestPlayer (18) line.
+quests = Q.ParseTooltip({
+  { type = 17, leftText = "The Zhevra" },
+  { type = 8, leftText = "1/4 Zhevra Hooves" },
+  { type = 18, leftText = "Teammate" },
+  { type = 8, leftText = "3/4 Zhevra Hooves" },
+}, "Zhevra Runner")
+eq("party progress ignored", #quests[1].objectives, 1)
+eq("our progress kept", quests[1].objectives[1].have, 1)
+
+-- A quest only a teammate has (not in our log) is dropped, objectives and all.
+local mine = function(title) return title == "The Zhevra" end
+quests = Q.ParseTooltip({
+  { type = 17, leftText = "Their Quest" },
+  { type = 8, leftText = "0/6 Zhevra Runner slain" },
+  { type = 17, leftText = "The Zhevra" },
+  { type = 8, leftText = "0/4 Zhevra Hooves" },
+}, "Zhevra Runner", mine)
+eq("teammate-only quest dropped", #quests, 1)
+eq("our quest kept", quests[1].title, "The Zhevra")
+
+-- Only a teammate's progress on a shared title: nothing of ours left.
+quests = Q.ParseTooltip({
+  { type = 17, leftText = "The Zhevra" },
+  { type = 18, leftText = "Teammate" },
+  { type = 8, leftText = "2/4 Zhevra Hooves" },
+}, "Zhevra Runner")
+eq("quest with only their progress dropped", #quests, 0)
+
 eq("no quest lines", #Q.ParseTooltip({ { type = 2, leftText = "Wolf" } }, "Wolf"), 0)
 
 if failures == 0 then print("all quest tests passed") else print(failures .. " failure(s)") os.exit(1) end
