@@ -203,12 +203,13 @@ local function assignSlots(mobs, visible)
     local macro = unit and ("/target [@" .. unit .. "]" .. mark) or nil
     if macro ~= b.macro then
       b.macro = macro
-      UnregisterStateDriver(b, "visibility")
       if macro then
         b:SetAttribute("macrotext", macro)
-        -- The game itself hides the click spot once its mob is gone or dead,
-        -- in combat too, with no addon code involved.
-        RegisterStateDriver(b, "visibility", "[@" .. unit .. ",exists,nodead] show; hide")
+        -- Plainly shown. A visibility driver like [@nameplateN,exists,nodead]
+        -- evaluates false on Forever even for a live mob (unit existence is
+        -- secret), which hid every click spot. A click on a slot whose mob is
+        -- gone just finds nothing to target.
+        b:Show()
       else
         b:Hide()
       end

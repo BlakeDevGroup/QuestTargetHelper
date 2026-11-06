@@ -44,6 +44,11 @@ for _, m in ipairs({ "Bottom", "Top", "Left", "Right", "Center", "Width", "Heigh
   eq("no direct nameplate measuring: Get" .. m, offenders("plate:Get" .. m .. "%("), "")
 end
 
+-- Bug: row clicks did nothing. A visibility state driver with
+-- [@nameplateN,exists,nodead] evaluates false on Forever for live mobs, so
+-- every click spot hid itself.
+eq("no state drivers on click spots", offenders("RegisterStateDriver%("), "")
+
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
 
