@@ -62,6 +62,27 @@ local function probeUnit(unit)
   if UnitHealthMissing then r.healthMissing = D(Try(UnitHealthMissing, unit)) end
   r.isTarget = D(Try(UnitIsUnit, unit, "target"))
   if UnitIsQuestBoss then r.questBoss = D(Try(UnitIsQuestBoss, unit)) end
+  if C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest then
+    r.questRelated = D(Try(C_QuestLog.UnitIsRelatedToActiveQuest, unit))
+  end
+  if C_TooltipInfo and C_TooltipInfo.GetUnit then
+    local tip = Try(C_TooltipInfo.GetUnit, unit)
+    if type(tip) == "table" and type(tip.lines) == "table" then
+      r.tooltip = {}
+      for i, l in ipairs(tip.lines) do
+        if i > 8 then break end
+        r.tooltip[i] = "type=" .. D(l.type) .. " " .. D(l.leftText)
+      end
+    else
+      r.tooltip = D(tip)
+    end
+  end
+  if C_Secrets then
+    r.secrecy = {}
+    for _, fn in ipairs({ "ShouldUnitIdentityBeSecret", "ShouldUnitHealthMaxBeSecret", "ShouldUnitComparisonBeSecret" }) do
+      if C_Secrets[fn] then r.secrecy[fn] = D(Try(C_Secrets[fn], unit)) end
+    end
+  end
 
   -- Our own debuffs on this unit.
   if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
@@ -97,14 +118,18 @@ end
 local function probePlate(unit)
   local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and Try(C_NamePlate.GetNamePlateForUnit, unit)
   if type(plate) ~= "table" then return D(plate) end
-  local r = { name = D(plate:GetName()), plateKeys = keys(plate) }
-  local uf = plate.UnitFrame
-  r.UnitFrame = uf and "yes" or "no"
-  if uf then
-    r.ufKeys = keys(uf)
-    r.healthBar = uf.healthBar and "UnitFrame.healthBar" or
-      (uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar and "UnitFrame.HealthBarsContainer.healthBar") or "none"
-  end
+  local r = { name = D(plate:GetName()) }
+  local uf = plate.UnitFrame -- Blizzard's plate frame
+  r.blizzHealthBar = (uf and uf.healthBar) and "yes" or "no"
+  r.blizzShown = uf and D(Try(uf.IsShown, uf)) or "nil"
+  local pf = plate.unitFrame -- Plater's plate frame
+  r.platerHealthBar = (pf and pf.healthBar) and "yes" or "no"
+  r.platerShown = pf and D(Try(pf.IsShown, pf)) or "nil"
+  -- Plater caches these on the plate; plain values here would save us lookups.
+  r.platerGUID = D(plate.namePlateUnitGUID)
+  r.platerNpcId = D(plate.namePlateNpcId)
+  r.platerName = D(plate.namePlateUnitName)
+  r.platerQuest = D(plate.namePlateIsQuestObjective)
   r.statusBars = {}
   describeBars(plate, 1, r.statusBars, "")
   return r
@@ -140,8 +165,12 @@ local function probeSpellbook()
   return out
 end
 
-function ns.ProbeSnapshot(label)
+function ns.ProbeSnapshot(label, quiet)
   local snap = { label = label or "unlabeled", at = date("%H:%M:%S") }
+  if C_Secrets then
+    snap.hasSecretRestrictions = D(Try(C_Secrets.HasSecretRestrictions))
+    snap.shouldAurasBeSecret = D(Try(C_Secrets.ShouldAurasBeSecret))
+  end
   snap.build = table.concat({ D(select(1, GetBuildInfo())), D(select(2, GetBuildInfo())), D(select(4, GetBuildInfo())) }, " ")
   snap.project = D(WOW_PROJECT_ID)
   snap.inCombat = D(InCombatLockdown())
@@ -179,9 +208,20 @@ function ns.ProbeSnapshot(label)
     end
   end
   snap.widgets = probeWidgets()
-  snap.spellbook = probeSpellbook()
+  if not quiet then snap.spellbook = probeSpellbook() end
   table.insert(db().snapshots, snap)
   print("|cff55ff55QuestTargetHelper|r probe '" .. snap.label .. "' saved (" .. #db().snapshots .. " total). /reload or log out to write the file.")
+end
+
+-- Automatic snapshots at the moments that matter, so timing never depends on
+-- the player typing in combat. Capped per session.
+local autoLeft, castLeft = 10, 4
+local function auto(label, delay)
+  if autoLeft <= 0 then return end
+  autoLeft = autoLeft - 1
+  C_Timer.After(delay or 0, function()
+    ns.SafeCall("probe:auto", ns.ProbeSnapshot, label, true)
+  end)
 end
 
 -- Event recorders: these run all session so casts and plate timing get captured.
@@ -190,6 +230,16 @@ f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
 f:RegisterUnitEvent("UNIT_AURA", "target")
 f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+f:RegisterEvent("PLAYER_REGEN_DISABLED")
+f:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+-- Only casts at something attackable (or while fighting) are worth keeping;
+-- crafting pushed the DoT casts out of the first report.
+local function castIsInteresting()
+  if InCombatLockdown() then return true end
+  local hostile = Try(UnitCanAttack, "player", "target")
+  return IsSecret(hostile) or hostile == true
+end
 -- UNIT_COMBAT is fine on Forever (DoesItDie ships using it). Never register
 -- COMBAT_LOG_EVENT_UNFILTERED: Forever answers with ADDON_ACTION_FORBIDDEN,
 -- which pcall cannot catch (Details skips it on these clients too).
@@ -199,10 +249,22 @@ f:SetScript("OnEvent", function(_, event, ...)
   ns.SafeCall("probe:" .. event, function(...)
     local a1, a2, a3, a4, a5 = ...
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
+      if not castIsInteresting() then return end
+      local plainId = not IsSecret(a3) and type(a3) == "number"
       log(event, { castGUID = D(a2), spellID = D(a3), targetGuid = D(Try(UnitGUID, "target")),
-        desc = (not IsSecret(a3) and type(a3) == "number") and D(Try(C_Spell.GetSpellDescription, a3)) or "?" })
+        targetName = D(Try(UnitName, "target")),
+        desc = plainId and D(Try(C_Spell.GetSpellDescription, a3)) or "?" })
+      if InCombatLockdown() and castLeft > 0 then
+        castLeft = castLeft - 1
+        auto("auto-cast-" .. D(a3), 0.5) -- after the debuff has landed
+      end
     elseif event == "UNIT_SPELLCAST_SENT" then
+      if not castIsInteresting() then return end
       log(event, { target = D(a2), castGUID = D(a3), spellID = D(a4) })
+    elseif event == "PLAYER_REGEN_DISABLED" then
+      auto("auto-combat-start", 1)
+    elseif event == "PLAYER_REGEN_ENABLED" then
+      auto("auto-combat-end", 0)
     elseif event == "UNIT_AURA" then
       local info = a2
       local added = {}
@@ -216,12 +278,8 @@ f:SetScript("OnEvent", function(_, event, ...)
     elseif event == "UNIT_COMBAT" then
       log(event, { action = D(a2), flag = D(a3), amount = D(a4), school = D(a5) })
     elseif event == "NAME_PLATE_UNIT_ADDED" then
-      local unit = a1
-      local entry = { unit = D(unit), now = probePlate(unit) }
-      log(event, entry)
-      C_Timer.After(0, function()
-        entry.nextFrame = probePlate(unit)
-      end)
+      -- The first report showed plates are ready immediately; keep it compact.
+      log(event, { unit = D(a1), frame = probePlate(a1) })
     end
   end, ...)
 end)
