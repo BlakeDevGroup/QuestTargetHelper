@@ -7,6 +7,15 @@ local PREFIX = "|cff55ff55QTH|r "
 
 local function say(msg) print(PREFIX .. msg) end
 
+-- WoW only rereads a TOC's file list when the client starts, so after an
+-- update that adds files a /reload runs new Core.lua without its modules.
+if not (Tracker and Frames and Overlay and ns.Math and ns.Spells) then
+  C_Timer.After(3, function()
+    say("|cffff5555files missing: fully restart WoW (a /reload is not enough after an update that adds files).|r")
+  end)
+  return
+end
+
 -- Redraw every visible bar. Runs 10x/s, but only while some mob has our DoTs
 -- (plus one extra pass to hide the zones after the last one ends).
 local hadAny = false

@@ -272,7 +272,7 @@ f:SetScript("OnEvent", function(_, event, ...)
     elseif event == "UNIT_AURA" then
       local info = a2
       local added = {}
-      if type(info) == "table" and type(info.addedAuras) == "table" then
+      if type(info) == "table" and not IsSecret(info.addedAuras) and type(info.addedAuras) == "table" then
         for _, a in ipairs(info.addedAuras) do
           added[#added + 1] = "name=" .. D(a.name) .. " id=" .. D(a.spellId) .. " dur=" .. D(a.duration) ..
             " src=" .. D(a.sourceUnit) .. " mine=" .. D(a.isFromPlayerOrPlayerPet)
