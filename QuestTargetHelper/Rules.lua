@@ -147,14 +147,6 @@ function R.CastUnit(targetName, candidates)
   return nil
 end
 
--- A group member's cast (UNIT_SPELLCAST_SUCCEEDED from party1-4 / raid1-40).
--- Their DoT of the same name replaces ours on the mob, so ours stops counting.
--- isMe: the raid token that is us (raid groups list the player too).
-function R.IsGroupCaster(unit, isMe)
-  if type(unit) ~= "string" or isMe == true then return false end
-  return unit:match("^party[1-4]$") ~= nil or unit:match("^raid%d+$") ~= nil
-end
-
 -- Quests to announce as complete: in `now` (questID -> title) but not in
 -- `known`, and never announced before. Marks them in `announced`. The quest
 -- log can flicker complete -> not -> complete while updating; this keeps that

@@ -99,14 +99,6 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       ns.OnSettingsChanged()
       f:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
       f:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-      -- Group members' casts, on their own frame (a unit filter can't list a
-      -- whole raid): their DoT replaces ours of the same name.
-      local group = CreateFrame("Frame")
-      group:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-      group:SetScript("OnEvent", function(_, _, unit, _, spellID)
-        if unit == "player" or not (IsInGroup and IsInGroup()) then return end
-        ns.SafeCall("groupcast", Tracker.OnGroupCast, unit, spellID)
-      end)
       f:RegisterUnitEvent("UNIT_COMBAT", "target")
       f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
       f:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
