@@ -24,6 +24,7 @@ Set it to show in combat, when quest mobs are nearby (default), always, or never
 
 ## Limits
 - **Open world only.** In dungeons and raids, Forever gives addons no nameplates and hides mob names, tooltips and IDs, so QuestTargetHelper switches off there.
+- **Only your DoTs count.** Other players' DoTs on the same mob aren't in the zone, so with help it dies sooner than shown.
 - **Same-name mobs:** a row click targets by name, and the game picks which of several same-name mobs. Hover a row to see its mob's nameplate outlined in gold.
 - **In combat,** mobs that appear mid-fight are listed but can't be clicked until combat ends.
 
