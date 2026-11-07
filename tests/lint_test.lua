@@ -74,6 +74,10 @@ local _, mouseOff = source("Overlay"):gsub("EnableMouse%(false%)", "")
 eq("overlay frames (zone, skull window, skull bar) ignore the mouse", mouseOff, 3)
 eq("click layer above the panel", (source("Panel"):find('holder:SetFrameStrata%("HIGH"%)') ~= nil), true)
 
+-- Bug: "sometimes when I drag the position resets". The 4x/s refresh re-anchored
+-- the panel mid-drag, snapping it back to the saved spot.
+eq("panel never re-anchored mid-drag", (source("Panel"):find("InCombatLockdown%(%) or dragging then return") ~= nil), true)
+
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
 

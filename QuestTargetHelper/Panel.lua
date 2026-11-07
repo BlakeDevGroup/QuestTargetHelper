@@ -46,9 +46,11 @@ local function position()
   return p
 end
 
--- Out of combat only.
+-- Out of combat only, and never mid-drag: the 4x/s refresh calls this, and
+-- re-anchoring a frame being dragged snaps it back to the saved spot.
+local dragging = false
 local function place()
-  if InCombatLockdown() then return end
+  if InCombatLockdown() or dragging then return end
   local p = position()
   frame:ClearAllPoints()
   frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", p.x, p.y)
@@ -74,8 +76,19 @@ local function build()
   bg:SetColorTexture(0, 0, 0, 0.55)
   frame:SetMovable(true)
   frame:RegisterForDrag("LeftButton")
-  frame:SetScript("OnDragStart", function() if not InCombatLockdown() then frame:StartMoving() end end)
-  frame:SetScript("OnDragStop", function() frame:StopMovingOrSizing() savePosition() end)
+  frame:SetScript("OnDragStart", function()
+    if InCombatLockdown() then return end
+    dragging = true
+    frame:StartMoving()
+  end)
+  frame:SetScript("OnDragStop", function()
+    frame:StopMovingOrSizing()
+    dragging = false
+    savePosition()
+  end)
+  frame:SetScript("OnHide", function() -- hidden mid-drag: OnDragStop may never come
+    if dragging then frame:StopMovingOrSizing() dragging = false savePosition() end
+  end)
   lines, rows = {}, {}
   place()
   frame:Hide()
