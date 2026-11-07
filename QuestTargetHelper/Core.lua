@@ -132,7 +132,7 @@ local function debugTarget()
   if not mob then say("no tracked DoTs on target") return end
   local now = GetTime()
   for name, e in pairs(mob) do
-    say(string.format("%s%s: %d left of %d (%d ticks of %ss, %.1fs in)", name, e.mine == false and " (group)" or "",
+    say(string.format("%s: %d left of %d (%d ticks of %ss, %.1fs in)", name,
       ns.Math.Remaining(e, now), e.total, e.ticks, e.tick, now - e.start))
   end
 end

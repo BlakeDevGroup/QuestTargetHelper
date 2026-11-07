@@ -8,7 +8,7 @@ Your DoTs are marked on the health bar of every mob you've dotted: on nameplates
 - The estimate is right from your first cast. It is read from the spell's own tooltip, which already includes your spell power, so there is nothing to learn first.
 - It errs low: crits are not counted, so if it says a mob dies, it does.
 - It counts DoTs cast at your soft target, mouseover or focus, not just your target.
-- Your group's DoTs count too, added to yours: a mob your teammates are dotting shows the whole zone. A teammate's DoT of the same name replaces yours, as in game. Their spell power is hidden, so their DoTs are estimated with yours.
+- When a group member puts the same DoT on a mob, theirs replaces yours, so yours stops counting.
 - Classes: Warlock, Priest, Druid, Hunter, Mage, Rogue, Shaman, Warrior.
 
 ## Pull tracker
