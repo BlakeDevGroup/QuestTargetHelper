@@ -27,6 +27,7 @@ ns.Panel = P
 local frame, lines, rows
 local holder, clickers
 local slots = {}       -- clickable slot index -> nameplate token
+local slotGuids = {}   -- clickable slot index -> GUID of the mob it was given to
 local objHeight = PAD  -- height of the objectives section; frozen in combat
 
 local function plain(v) return v ~= nil and not ns.IsSecret(v) end
@@ -124,11 +125,11 @@ local function buildClickers()
     -- Hovering a row outlines its mob's nameplate in gold (display only), so
     -- with several same-name mobs you can see which one the row means.
     b:HookScript("OnEnter", function(self)
-      ns.Markers.hoverUnit = self.macro -- the row's nameplate token
+      ns.Markers.hoverGuid = self.guid -- the row's mob, not its token (tokens get reused)
       ns.SafeCall("hover", ns.Markers.Update, GetTime())
     end)
     b:HookScript("OnLeave", function(self)
-      if ns.Markers.hoverUnit == self.macro then ns.Markers.hoverUnit = nil end
+      if ns.Markers.hoverGuid == self.guid then ns.Markers.hoverGuid = nil end
       ns.SafeCall("hover", ns.Markers.Update, GetTime())
     end)
     -- Diagnostics (insecure hook, after the secure click ran): which row was
@@ -237,7 +238,8 @@ end
 local function assignSlots(mobs, visible)
   buildClickers()
   wipe(slots)
-  for i = 1, math.min(#mobs, CLICK_ROWS) do slots[i] = mobs[i].unit end
+  wipe(slotGuids)
+  for i = 1, math.min(#mobs, CLICK_ROWS) do slots[i], slotGuids[i] = mobs[i].unit, mobs[i].guid end
   if not clickers then return end
   place() -- the click layer sits under the objectives, anchored to UIParent
   for i, b in ipairs(clickers) do
@@ -247,9 +249,9 @@ local function assignSlots(mobs, visible)
     -- name works; with several same-name mobs the game picks which.
     local name = unit and UnitName(unit)
     if name ~= nil and ns.IsSecret(name) then name = nil end
-    local key = name and (unit .. "|" .. name) or nil
+    local key = name and (unit .. "|" .. name .. "|" .. tostring(slotGuids[i])) or nil
     if key ~= b.key then
-      b.key, b.macro = key, unit -- (macro field kept for /qth dump)
+      b.key, b.macro, b.guid = key, unit, slotGuids[i] -- (macro field kept for /qth dump)
       if name then
         b:SetAttribute("macrotext1", "/targetexact " .. name)
         b:SetAttribute("macrotext2", "/targetexact " .. name .. "\n/tm !8") -- "!" = don't toggle off
@@ -293,12 +295,15 @@ function P.EnterCombat(now)
   assignSlots(mobs, true)
 end
 
--- One row for the mob behind `unit` right now (the token may have moved on).
-local function drawRow(r, unit, now, s, clickable, snap)
+-- One row for the mob behind `unit` right now. A slot is a nameplate token,
+-- and the game hands a freed token (mob died) to the next unit that gets a
+-- plate, often the player who killed it: `expect` is the GUID the row was
+-- given to, and the row hides once its token holds anyone else.
+local function drawRow(r, unit, now, s, clickable, snap, expect)
   local guid = Tracker.GuidFor(unit)
   local name = nil
   if Frames.plates[unit] ~= nil then name = UnitName(unit) end
-  if not guid or not plain(name) or isTrue(UnitIsDead(unit)) then
+  if not guid or not plain(name) or isTrue(UnitIsDead(unit)) or not ns.Rules.SameMob(expect, guid) then
     r:Hide() -- its mob is gone; the slot stays (click spots can't move in combat)
     return false
   end
@@ -378,19 +383,19 @@ function P.Refresh(now)
     local r = row(i)
     r:ClearAllPoints()
     r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (i - 1) * ROW_H)
-    if drawRow(r, slots[i], now, s, true, snapOf[slots[i]]) then lastShown = i end
+    if drawRow(r, slots[i], now, s, true, snapOf[slots[i]], slotGuids[i]) then lastShown = i end
   end
   if combat then
-    local inSlots = {}
-    for _, u in ipairs(slots) do inSlots[u] = true end
+    local inSlots = {} -- by GUID: a mob that took over a slot's token still gets an extra row
+    for _, g in ipairs(slotGuids) do inSlots[g] = true end
     for _, m in ipairs(mobs) do
       if n >= MAX_ROWS then break end
-      if not inSlots[m.unit] then
+      if not inSlots[m.guid] then
         n = n + 1
         local r = row(n)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, -objHeight - (n - 1) * ROW_H)
-        if drawRow(r, m.unit, now, s, false, snapOf[m.unit]) then lastShown = n end
+        if drawRow(r, m.unit, now, s, false, snapOf[m.unit], m.guid) then lastShown = n end
       end
     end
   end

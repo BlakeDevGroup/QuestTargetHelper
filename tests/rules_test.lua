@@ -165,6 +165,13 @@ local cands = {
 }
 eq("cast at soft target credited there", R.CastUnit("Zhevra Runner", cands), "softenemy")
 eq("tie: hard target wins", R.CastUnit("Kolkar", cands), "target")
+-- Bug: "sometimes a player's name is added to the addon" (when they killed a
+-- mob). The dead mob's nameplate token went to that player's plate, and the
+-- frozen in-combat row drew whoever held the token.
+eq("row token now holds someone else: hidden", R.SameMob("Creature-1", "Player-9"), false)
+eq("row token still holds its mob: shown", R.SameMob("Creature-1", "Creature-1"), true)
+eq("row mob unknown: hidden", R.SameMob(nil, "Player-9"), false)
+eq("current unit unreadable: hidden", R.SameMob("Creature-1", nil), false)
 eq("non-hostile skipped", R.CastUnit("Guard", { { unit = "target", name = "Guard", hostile = false } }), nil)
 eq("no name: no unit", R.CastUnit(nil, cands), nil)
 

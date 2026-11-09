@@ -147,6 +147,13 @@ function R.CastUnit(targetName, candidates)
   return nil
 end
 
+-- Is the unit on a pull-tracker row still the mob the row was given to?
+-- Rows hold nameplate tokens, and a token freed by a dead mob goes to the
+-- next unit with a plate (often the player who killed it).
+function R.SameMob(expected, current)
+  return expected ~= nil and current ~= nil and current == expected
+end
+
 -- Quests to announce as complete: in `now` (questID -> title) but not in
 -- `known`, and never announced before. Marks them in `announced`. The quest
 -- log can flicker complete -> not -> complete while updating; this keeps that

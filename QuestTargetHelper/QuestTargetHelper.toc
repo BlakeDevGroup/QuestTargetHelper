@@ -2,7 +2,7 @@
 ## Title: QuestTargetHelper
 ## Notes: Speed-levelling helper: DoT kill zone on nameplates and unit frames, and a clickable pull tracker of nearby quest mobs.
 ## Author: cdblake
-## Version: 0.9.0
+## Version: 0.9.1
 ## SavedVariables: QuestTargetHelperDB
 ## X-Curse-Project-ID: 1786417
 ## X-Website: https://github.com/BlakeDevGroup/QuestTargetHelper

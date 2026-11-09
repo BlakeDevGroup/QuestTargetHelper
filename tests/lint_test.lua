@@ -78,6 +78,11 @@ eq("click layer above the panel", (source("Panel"):find('holder:SetFrameStrata%(
 -- the panel mid-drag, snapping it back to the saved spot.
 eq("panel never re-anchored mid-drag", (source("Panel"):find("InCombatLockdown%(%) or dragging then return") ~= nil), true)
 
+-- Bug: a player's name showed on a row. Rows and the hover outline must check
+-- the mob's GUID, never trust a nameplate token alone.
+eq("rows check the slot still holds its mob", (source("Panel"):find("Rules%.SameMob%(expect, guid%)") ~= nil), true)
+eq("hover outline follows the GUID", offenders("hoverUnit"), "")
+
 -- Bug: an ADDON_ACTION_FORBIDDEN popup pcall can't catch.
 eq("combat log never registered", offenders("COMBAT_LOG_EVENT_UNFILTERED"), "")
 

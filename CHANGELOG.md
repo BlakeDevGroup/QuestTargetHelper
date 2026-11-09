@@ -2,6 +2,9 @@
 
 The newest section is uploaded to CurseForge as the release notes.
 
+## 0.9.1
+- Fixed: the pull tracker sometimes listed a player, usually one who had just killed a mob. In combat a row now hides once its mob is gone, instead of showing whoever took over its nameplate.
+
 ## 0.9.0
 First beta for WoW Forever.
 - Kill zone on nameplates (Blizzard and Plater) and target/focus frames, with a skull when your DoTs are lethal.

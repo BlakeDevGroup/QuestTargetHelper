@@ -41,8 +41,8 @@ local function show(bar, open, hovered)
   marked[bar] = true
 end
 
--- Nameplate token of the pull-tracker row under the mouse (Panel sets it).
-M.hoverUnit = nil
+-- GUID of the mob whose pull-tracker row is under the mouse (Panel sets it).
+M.hoverGuid = nil
 
 function M.Update(now)
   local s = ns.settings
@@ -50,11 +50,12 @@ function M.Update(now)
   for unit in pairs(Frames.plates) do
     local bar = Frames.PlateBar(unit)
     if bar then
-      local isHovered = unit == M.hoverUnit
+      local guid = UnitGUID(unit)
+      if guid ~= nil and ns.IsSecret(guid) then guid = nil end -- never compare or index with a secret
+      local isHovered = guid ~= nil and guid == M.hoverGuid
       local open = 0
       if s.doubleDip then
-        local guid = UnitGUID(unit)
-        local e = guid and not ns.IsSecret(guid) and Quest.cache[guid] -- never index with a secret
+        local e = guid and Quest.cache[guid]
         if e then open = Quest.OpenObjectives(e) end
       end
       if isHovered or open >= 2 then
