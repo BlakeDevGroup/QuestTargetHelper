@@ -19,7 +19,7 @@ local function report()
   if #errors == 0 then
     lines[#lines + 1] = "No errors logged"
   else
-    for i = 1, math.min(#errors, 5) do lines[#lines + 1] = "Error: " .. errors[i] end
+    for i = math.max(1, #errors - 4), #errors do lines[#lines + 1] = "Error: " .. errors[i] end -- newest 5
   end
   return table.concat(lines, "\n")
 end

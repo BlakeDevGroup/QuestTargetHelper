@@ -58,9 +58,6 @@ function ns.OnSettingsChanged()
   hadAny = true -- one pass even with no DoTs, to hide zones that were switched off
 end
 
-local dump            -- defined below with the slash commands
-local autoDumps = 3   -- automatic dumps left this session
-
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(_, event, a1, a2, a3)
@@ -83,16 +80,15 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       C_Timer.After(2, function() ns.SafeCall("range", ns.ApplyPlateRange, false) end)
     elseif event == "PLAYER_REGEN_DISABLED" then
       ns.Panel.EnterCombat(GetTime()) -- last moment secure buttons may change
-      -- Diagnostics: a dump 3s into the first few fights of a session, so
-      -- nobody has to type mid-fight. Read from SavedVariables after /reload.
-      if autoDumps > 0 then
-        autoDumps = autoDumps - 1
-        C_Timer.After(3, function() ns.SafeCall("autodump", dump, "auto") end)
-      end
     elseif event == "ADDON_LOADED" and a1 == ADDON then
-      QuestTargetHelperDB = QuestTargetHelperDB or {}
-      QuestTargetHelperDB.settings = QuestTargetHelperDB.settings or {}
-      local s = QuestTargetHelperDB.settings
+      local db = QuestTargetHelperDB or {}
+      QuestTargetHelperDB = db
+      -- Beta diagnostics (probe, fight dumps, click log) are gone; drop what they saved.
+      db.probe, db.dumps, db.clicks = nil, nil, nil
+      while db.errors and #db.errors > 20 do table.remove(db.errors, 1) end
+      db.settings = db.settings or {}
+      local s = db.settings
+      for k in pairs(s) do if ns.DEFAULTS[k] == nil then s[k] = nil end end
       for k, v in pairs(ns.DEFAULTS) do if s[k] == nil then s[k] = v end end
       ns.settings = s
       ns.SafeCall("settings", ns.RegisterSettings)
@@ -106,7 +102,6 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
       f:RegisterUnitEvent("UNIT_QUEST_LOG_CHANGED", "player")
       f:RegisterEvent("PLAYER_REGEN_DISABLED")
       f:RegisterEvent("PLAYER_ENTERING_WORLD")
-      if s.probeRec then ns.ProbeStartRecording() end
       C_Timer.NewTicker(0.1, function() ns.SafeCall("refresh", refresh) end)
       -- Quest-side work at 4x/s.
       C_Timer.NewTicker(0.25, function()
@@ -129,96 +124,10 @@ local function debugTarget()
   end
 end
 
--- /qth quest: what the target's tooltip says and what we made of it.
-local function debugQuest()
-  local Q = ns.Quest
-  local tip = C_TooltipInfo and C_TooltipInfo.GetUnit("target")
-  if type(tip) ~= "table" or type(tip.lines) ~= "table" then say("no tooltip data for target") return end
-  local n = 0
-  for _ in pairs(Q.myTitles or {}) do n = n + 1 end
-  say("quest log titles read: " .. (Q.myTitles and n or "none (no filter)"))
-  for i, l in ipairs(tip.lines) do
-    say(string.format("line %d type=%s %s", i, ns.Describe(l.type), ns.Describe(l.leftText)))
-  end
-  Q.Invalidate()
-  local _, e = Q.ForUnit("target", GetTime())
-  if not e then say("target GUID unreadable") return end
-  if #e.quests == 0 then say("parsed: no quests of yours") end
-  -- Every signal the rules decide on, "nil" where the game hid it.
-  local side = ns.Snapshot.Side()
-  local snap, ctx = ns.Snapshot.ForUnit("target", GetTime(), side), ns.Snapshot.Context(side)
-  if snap then
-    say(string.format("signals: attackable=%s dead=%s tapDenied=%s inCombat=%s threatStatus=%s targetsSide=%s threatLine=%s dots=%d related=%s sideInCombat=%s",
-      tostring(snap.attackable), tostring(snap.dead), tostring(snap.tapDenied), tostring(snap.inCombat),
-      tostring(snap.threatStatus), tostring(snap.targetsSide), tostring(e.threat), snap.rem or 0,
-      tostring(snap.related), tostring(ctx.sideInCombat)))
-    say("quest mob: " .. tostring(ns.Rules.IsQuestMob(snap, Q.Progress)) ..
-      ", fighting your side: " .. tostring(ns.Rules.Fighting(snap, ctx)))
-  end
-  for _, q in ipairs(e.quests) do
-    for _, o in ipairs(q.objectives) do
-      local have, need = Q.Progress(q.title, o)
-      say(string.format("parsed: %s / %s %d/%d", q.title, o.text, have, need))
-    end
-  end
-end
-
--- /qth dump: everything the rules see about every nameplate, saved for reading
--- outside the game (written on /reload). Includes plates we aren't tracking.
-function dump(label) -- assigns the local declared above
-  local now = GetTime()
-  local snaps, ctx = ns.Snapshot.All(now)
-  local d = { label = label or "manual", at = date("%H:%M:%S"), inCombat = InCombatLockdown(), sideInCombat = ctx.sideInCombat,
-    logTitles = 0, plates = {}, untracked = {} }
-  for _ in pairs(ns.Quest.myTitles or {}) do d.logTitles = d.logTitles + 1 end
-  for _, s in ipairs(snaps) do
-    local lines = {}
-    local tip = C_TooltipInfo and C_TooltipInfo.GetUnit(s.unit)
-    for i, l in ipairs(type(tip) == "table" and type(tip.lines) == "table" and tip.lines or {}) do
-      lines[i] = ns.Describe(l.type) .. " | " .. ns.Describe(l.leftText)
-    end
-    local quests = {}
-    for _, q in ipairs(s.entry.quests) do
-      for _, o in ipairs(q.objectives) do
-        local have, need = ns.Quest.Progress(q.title, o)
-        quests[#quests + 1] = q.title .. " / " .. o.text .. " " .. have .. "/" .. need
-      end
-      if #q.objectives == 0 then quests[#quests + 1] = q.title .. " (no objective lines)" end
-    end
-    d.plates[#d.plates + 1] = {
-      unit = s.unit, name = s.name, tooltip = lines, quests = quests,
-      attackable = tostring(s.attackable), dead = tostring(s.dead), tapDenied = tostring(s.tapDenied),
-      inCombat = tostring(s.inCombat), threatStatus = tostring(s.threatStatus),
-      targetsSide = tostring(s.targetsSide), threatLine = tostring(s.entry.threat),
-      dots = s.rem or 0, related = tostring(s.related),
-      questMob = ns.Rules.IsQuestMob(s, ns.Quest.Progress), fighting = ns.Rules.Fighting(s, ctx),
-    }
-  end
-  -- Plates the game has that never reached our list (NAME_PLATE_UNIT_ADDED missed?).
-  for i = 1, 40 do
-    local unit = "nameplate" .. i
-    if C_NamePlate.GetNamePlateForUnit(unit) and ns.Frames.plates[unit] == nil then
-      d.untracked[#d.untracked + 1] = unit .. " " .. ns.Describe(UnitName(unit))
-    end
-  end
-  QuestTargetHelperDB.dumps = QuestTargetHelperDB.dumps or {}
-  table.insert(QuestTargetHelperDB.dumps, d)
-  while #QuestTargetHelperDB.dumps > 10 do table.remove(QuestTargetHelperDB.dumps, 1) end
-  -- What the panel would list right now, for comparison with the plates.
-  d.rows = {}
-  for _, r in ipairs(ns.Rules.Rows(snaps, ctx, ns.Quest.Progress)) do d.rows[#d.rows + 1] = r.unit end
-  d.panelShown = _G.QuestTargetHelperPanel and _G.QuestTargetHelperPanel:IsShown() or false
-  d.clicks = ns.Panel.ClickState()
-  d.errors = #(QuestTargetHelperDB.errors or {})
-  if label ~= "auto" then
-    say(string.format("dumped %d nameplates (%d untracked). /reload to save it.", #d.plates, #d.untracked))
-  end
-end
-
 SLASH_QUESTTARGETHELPER1 = "/qth"
 SlashCmdList.QUESTTARGETHELPER = function(msg)
   ns.SafeCall("slash", function()
-    local cmd, rest = (msg or ""):match("^(%S*)%s*(.-)$")
+    local cmd = (msg or ""):match("^(%S*)")
     if cmd == "" then
       ns.OpenSettings()
     elseif cmd == "on" or cmd == "off" then
@@ -228,39 +137,6 @@ SlashCmdList.QUESTTARGETHELPER = function(msg)
       ns.ShowFeedback()
     elseif cmd == "debug" then
       debugTarget()
-    elseif cmd == "quest" then
-      debugQuest()
-    elseif cmd == "dump" then
-      dump()
-    elseif cmd == "clicks" then
-      ns.settings.clickLog = not ns.settings.clickLog
-      say("row click log " .. (ns.settings.clickLog and "on" or "off") ..
-        (ns.settings.clickLog and " (also names the frame under your cursor)" or ""))
-      -- Which frame would take a click right now; printed when it changes.
-      if ns.settings.clickLog and not ns.focusTicker then
-        local last
-        ns.focusTicker = C_Timer.NewTicker(0.3, function()
-          if not ns.settings.clickLog then return end
-          local f = (GetMouseFoci and GetMouseFoci()[1]) or (GetMouseFocus and GetMouseFocus())
-          local name = "nothing"
-          if f then
-            local ok, n = pcall(f.GetDebugName, f)
-            name = ok and tostring(n) or "?"
-          end
-          if name ~= last then
-            last = name
-            say("under cursor: " .. name)
-          end
-        end)
-      end
-    elseif cmd == "probe" and rest == "rec" then
-      ns.settings.probeRec = not ns.settings.probeRec
-      say("probe recording " .. (ns.settings.probeRec and "on" or "off") .. " (takes effect after /reload)")
-    elseif cmd == "probe" then
-      ns.ProbeSnapshot(rest ~= "" and rest or nil)
-    elseif cmd == "reset" then
-      QuestTargetHelperDB.probe = nil
-      say("probe data cleared")
     elseif cmd == "errors" then
       for _, e in ipairs(QuestTargetHelperDB.errors or {}) do print(e) end
     else

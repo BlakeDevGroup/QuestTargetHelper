@@ -29,7 +29,6 @@ ns.DEFAULTS = {
   alerts = true,      -- "Quest complete: <title>"
   alertSound = true,
   plateRange = 0,     -- nameplateMaxDistance in yards; 0 = leave the game's value
-  probeRec = false,
 }
 
 local category

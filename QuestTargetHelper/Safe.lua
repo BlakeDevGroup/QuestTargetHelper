@@ -33,7 +33,9 @@ function ns.SafeCall(site, fn, ...)
     reported[site] = true
     QuestTargetHelperDB = QuestTargetHelperDB or {}
     QuestTargetHelperDB.errors = QuestTargetHelperDB.errors or {}
-    table.insert(QuestTargetHelperDB.errors, site .. ": " .. ns.Describe(err))
+    local log = QuestTargetHelperDB.errors
+    table.insert(log, site .. ": " .. ns.Describe(err))
+    while #log > 20 do table.remove(log, 1) end -- newest 20
     print("|cffff5555QuestTargetHelper|r error in " .. site .. " (logged; /qth errors)")
   end
 end

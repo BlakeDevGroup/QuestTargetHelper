@@ -66,7 +66,9 @@ eq("rows target by name", (source("Panel"):find('"/targetexact " %.%. name') ~= 
 
 -- The keybind and looting were removed: nothing may still point at them.
 eq("no Targeting or Loot module left", offenders("ns%.Targeting") .. offenders("ns%.Loot"), "")
-eq("TOC lists the core files", #FILES >= 16, true)
+eq("TOC lists the core files", #FILES >= 15, true)
+-- The beta diagnostics were removed: nothing may still point at them.
+eq("no probe or dump code left", offenders("Probe") .. offenders("dump%(") .. offenders("clickLog"), "")
 
 -- Bug: only the name part of a row took clicks; the kill-zone frames over the
 -- bar were in the way. Display frames ignore the mouse, the click layer is HIGH.
