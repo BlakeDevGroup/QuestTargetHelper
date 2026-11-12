@@ -132,26 +132,6 @@ local function buildClickers()
       if ns.Markers.hoverGuid == self.guid then ns.Markers.hoverGuid = nil end
       ns.SafeCall("hover", ns.Markers.Update, GetTime())
     end)
-    -- Diagnostics (insecure hook, after the secure click ran): which row was
-    -- clicked and what we're targeting now. Shown in /qth dump.
-    b:HookScript("PostClick", function(self, button, down)
-      local name = UnitName("target")
-      local unit = self.macro -- the nameplate token this row is bound to
-      local rowMob = unit and ns.Describe(UnitName(unit)) or "none"
-      P.lastClick = { row = i, at = date("%H:%M:%S"), button = tostring(button), down = tostring(down),
-        macro = tostring(self.macro), rowMob = rowMob, target = ns.Describe(name),
-        macrotext = tostring(self:GetAttribute(button == "RightButton" and "macrotext2" or "macrotext1")),
-        type = tostring(self:GetAttribute("type")) }
-      -- Always kept (last 20) so a /reload is enough to inspect clicks.
-      QuestTargetHelperDB.clicks = QuestTargetHelperDB.clicks or {}
-      local log = QuestTargetHelperDB.clicks
-      log[#log + 1] = P.lastClick
-      while #log > 20 do table.remove(log, 1) end
-      if ns.settings.clickLog then
-        print(string.format("|cff55ff55QTH|r click row %d (%s, %s) %s %s -> target now: %s",
-          i, tostring(unit), rowMob, tostring(button), down and "down" or "up", ns.Describe(name)))
-      end
-    end)
     b:Hide()
     clickers[i] = b
   end
@@ -251,7 +231,7 @@ local function assignSlots(mobs, visible)
     if name ~= nil and ns.IsSecret(name) then name = nil end
     local key = name and (unit .. "|" .. name .. "|" .. tostring(slotGuids[i])) or nil
     if key ~= b.key then
-      b.key, b.macro, b.guid = key, unit, slotGuids[i] -- (macro field kept for /qth dump)
+      b.key, b.guid = key, slotGuids[i]
       if name then
         b:SetAttribute("macrotext1", "/targetexact " .. name)
         b:SetAttribute("macrotext2", "/targetexact " .. name .. "\n/tm !8") -- "!" = don't toggle off
@@ -266,23 +246,6 @@ local function assignSlots(mobs, visible)
     end
   end
   holder:SetShown(visible and #slots > 0)
-end
-
--- For /qth dump: where the click layer is versus the panel, and the last click.
--- (Our own frames, so measuring them is allowed.)
-function P.ClickState()
-  local function rect(f)
-    if not f then return "none" end
-    local ok, l, t, w, h = pcall(function() return f:GetLeft(), f:GetTop(), f:GetWidth(), f:GetHeight() end)
-    if not ok then return "unmeasurable" end
-    return string.format("left=%s top=%s w=%s h=%s shown=%s visible=%s level=%s strata=%s mouse=%s",
-      tostring(l), tostring(t), tostring(w), tostring(h), tostring(f:IsShown()), tostring(f:IsVisible()),
-      tostring(f:GetFrameLevel()), tostring(f:GetFrameStrata()), tostring(f:IsMouseEnabled()))
-  end
-  local st = { panel = rect(frame), holder = rect(holder), slots = table.concat(slots, ","),
-    lastClick = P.lastClick, buttons = {} }
-  for i, b in ipairs(clickers or {}) do st.buttons[i] = tostring(b.macro) .. " | " .. rect(b) end
-  return st
 end
 
 -- PLAYER_REGEN_DISABLED, the last moment secure frames may change: freeze the

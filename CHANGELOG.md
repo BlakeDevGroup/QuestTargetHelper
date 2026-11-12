@@ -2,6 +2,11 @@
 
 The newest section is uploaded to CurseForge as the release notes.
 
+## 1.0.0
+First full release.
+- Removed the beta diagnostics that recorded fights and row clicks to your saved variables, and cleared what they had saved.
+- The error log keeps only the newest 20 entries.
+
 ## 0.9.1
 - Fixed: the pull tracker sometimes listed a player, usually one who had just killed a mob. In combat a row now hides once its mob is gone, instead of showing whoever took over its nameplate.
 
